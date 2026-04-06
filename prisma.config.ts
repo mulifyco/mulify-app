@@ -13,6 +13,8 @@ export default defineConfig({
     seed: "npx tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"] ?? "",
+    // For hosted Postgres (Supabase/Neon), use a direct (non-pooler) URL for migrations when available.
+    // App runtime (lib/prisma.ts) can use the pooler / DATABASE_URL.
+    url: process.env["DIRECT_DATABASE_URL"] ?? process.env["DATABASE_URL"] ?? "",
   },
 });

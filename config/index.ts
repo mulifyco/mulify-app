@@ -9,12 +9,13 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
 
   // App
-  NEXTAUTH_URL: z.string().url().default("http://localhost:3000"),
-  NEXTAUTH_SECRET: z.string().min(32, "NEXTAUTH_SECRET must be at least 32 characters"),
+  // Optional here; enforced for production in loadConfig().
+  NEXTAUTH_URL: z.string().url().optional(),
+  NEXTAUTH_SECRET: z.string().min(32, "NEXTAUTH_SECRET must be at least 32 characters").optional(),
 
   // Internal admin auth (simple password-based for Phase 1)
   ADMIN_EMAIL: z.string().email().default("admin@mulify.co"),
-  ADMIN_PASSWORD: z.string().min(12, "ADMIN_PASSWORD must be at least 12 characters"),
+  ADMIN_PASSWORD: z.string().min(12, "ADMIN_PASSWORD must be at least 12 characters").optional(),
 
   // Meta Ad Library API
   // Note: Meta Ad Library API requires app review and access token
@@ -64,7 +65,25 @@ function loadConfig() {
     throw new Error(`Invalid environment configuration:\n${missing}`);
   }
 
-  return parsed.data;
+  const cfg = parsed.data;
+
+  // Production must never fall back to localhost-only values or dev defaults.
+  if (cfg.NODE_ENV === "production") {
+    const missing: string[] = [];
+    if (!cfg.NEXTAUTH_URL?.trim()) missing.push("NEXTAUTH_URL");
+    if (!cfg.NEXTAUTH_SECRET?.trim() || cfg.NEXTAUTH_SECRET.length < 32) missing.push("NEXTAUTH_SECRET");
+    if (!cfg.ADMIN_PASSWORD?.trim() || cfg.ADMIN_PASSWORD.length < 12) missing.push("ADMIN_PASSWORD");
+    // ADMIN_EMAIL has a safe default, but require explicit value in production to avoid accidental access.
+    if (!process.env.ADMIN_EMAIL?.trim()) missing.push("ADMIN_EMAIL");
+
+    if (missing.length) {
+      throw new Error(
+        `Missing required production environment variables: ${missing.join(", ")}`
+      );
+    }
+  }
+
+  return cfg;
 }
 
 // Lazy singleton — only parse once

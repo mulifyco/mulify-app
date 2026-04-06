@@ -30,6 +30,8 @@ export default async function AdDetailPage({ params }: Props) {
     IntelligenceContextRepository.getForEntity("AD", ad.id),
   ]);
 
+  type RelatedIngestionJobRow = Awaited<ReturnType<typeof AdRepository.getRelatedJobsForAd>>[number];
+
   type AdDetail = typeof ad;
   const score = ad.confidenceScores[0];
   const listWarnings = adRowWarnings({
@@ -332,7 +334,7 @@ export default async function AdDetailPage({ params }: Props) {
                   </td>
                 </tr>
               ) : (
-                relatedJobs.map((j) => (
+                relatedJobs.map((j: RelatedIngestionJobRow) => (
                   <tr key={j.id} className="hover:bg-gray-900/40">
                     <td className="px-3 py-2 font-mono text-[11px] text-gray-500">{j.id.slice(0, 12)}…</td>
                     <td className="px-3 py-2 text-xs text-gray-400">{j.source.name}</td>
