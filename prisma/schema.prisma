@@ -1,0 +1,624 @@
+// Mulify Library — Phase 1 Intelligence Platform
+// Prisma Schema v1.0
+// library.mulify.co
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────
+
+enum SourceType {
+  META_ADS
+  SHOPIFY_STOREFRONT
+  MANUAL
+}
+
+enum SourceStatus {
+  ACTIVE
+  PAUSED
+  ERROR
+  PENDING
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  PARTIAL
+}
+
+enum RecordStatus {
+  RAW
+  PROCESSING
+  NORMALIZED
+  FAILED
+  SKIPPED
+}
+
+enum EntityType {
+  AD
+  STORE
+  PRODUCT
+  COLLECTION
+  LANDING_PAGE
+  ADVERTISER
+}
+
+enum Platform {
+  FACEBOOK
+  INSTAGRAM
+  AUDIENCE_NETWORK
+  MESSENGER
+  UNKNOWN
+}
+
+enum ConfidenceLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum MergeCandidateLevel {
+  EXACT
+  PROBABLE
+  WEAK
+  CONFLICT
+}
+
+enum SignalSeverity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TrafficTrend {
+  RISING
+  STABLE
+  FALLING
+}
+
+enum ProminenceLevel {
+  HERO
+  FEATURED
+  STANDARD
+  WEAK
+}
+
+enum OpportunityLevel {
+  BREAKOUT
+  STRONG
+  WATCH
+  WEAK
+}
+
+// ─────────────────────────────────────────────────────────────
+// SOURCE — Configuration record for each data source connector
+// ─────────────────────────────────────────────────────────────
+
+model Source {
+  id          String       @id @default(cuid())
+  name        String
+  type        SourceType
+  status      SourceStatus @default(PENDING)
+  config      Json
+  metadata    Json?
+  lastSyncAt  DateTime?
+  errorCount  Int          @default(0)
+  lastError   String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  ingestionJobs IngestionJob[]
+  rawRecords    RawRecord[]
+  syncLogs      SyncLog[]
+
+  @@index([type])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────
+// INGESTION JOB — Tracks each ingestion run
+// ─────────────────────────────────────────────────────────────
+
+model IngestionJob {
+  id              String    @id @default(cuid())
+  sourceId        String
+  source          Source    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  status          JobStatus @default(PENDING)
+  triggeredBy     String    @default("manual")
+  startedAt       DateTime?
+  completedAt     DateTime?
+  durationMs      Int?
+  totalFetched    Int       @default(0)
+  totalStored     Int       @default(0)
+  totalNormalized Int       @default(0)
+  totalSkipped    Int       @default(0)
+  totalFailed     Int       @default(0)
+  cursor          String?
+  error           String?
+  errorStack      String?
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  rawRecords RawRecord[]
+  syncLogs   SyncLog[]
+
+  @@index([sourceId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// RAW RECORD — Immutable raw payload from any source
+// ─────────────────────────────────────────────────────────────
+
+model RawRecord {
+  id              String        @id @default(cuid())
+  sourceId        String
+  source          Source        @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  jobId           String?
+  job             IngestionJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  sourceType      SourceType
+  externalId      String
+  entityType      EntityType
+  status          RecordStatus  @default(RAW)
+  rawPayload      Json
+  payloadHash     String
+  firstSeenAt     DateTime      @default(now())
+  lastSeenAt      DateTime      @default(now())
+  normalizedAt    DateTime?
+  processingError String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  entityLinks EntityLink[]
+
+  @@unique([sourceId, externalId, entityType])
+  @@index([sourceId])
+  @@index([jobId])
+  @@index([sourceType])
+  @@index([entityType])
+  @@index([status])
+  @@index([payloadHash])
+  @@index([firstSeenAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// STORE — Normalized Shopify/e-commerce store record
+// ─────────────────────────────────────────────────────────────
+
+model Store {
+  id              String    @id @default(cuid())
+  domain          String    @unique
+  name            String?
+  description     String?
+  platform        String    @default("shopify")
+  country         String?
+  currency        String?
+  language        String?
+  logoUrl         String?
+  faviconUrl      String?
+  metaTitle       String?
+  metaDescription String?
+  contactEmail    String?
+  socialLinks     Json?
+  tags            String[]
+  isActive        Boolean   @default(true)
+  firstSeenAt     DateTime  @default(now())
+  lastSeenAt      DateTime  @default(now())
+  lastCrawledAt   DateTime?
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  /// Deterministic relative traffic strength (0–100), see trafficBreakdown.
+  trafficScore       Int?
+  trafficTrend       TrafficTrend?
+  trafficBreakdown   Json?
+  trafficUpdatedAt   DateTime?
+  trafficReasonCodes String[] @default([])
+
+  /// Ad + traffic fusion — winning probability (0–100), see fusionBreakdown.
+  winningProbabilityScore Int?
+  opportunityLevel        OpportunityLevel?
+  fusionReasonCodes       String[] @default([])
+  fusionBreakdown         Json?
+  opportunityUpdatedAt    DateTime?
+
+  products         Product[]
+  collections      Collection[]
+  entityLinks      EntityLink[]
+  confidenceScores ConfidenceScore[]
+
+  @@index([domain])
+  @@index([platform])
+  @@index([country])
+  @@index([firstSeenAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// PRODUCT — Normalized product record
+// ─────────────────────────────────────────────────────────────
+
+model Product {
+  id           String    @id @default(cuid())
+  storeId      String
+  store        Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  externalId   String?
+  handle       String
+  title        String
+  description  String?
+  vendor       String?
+  productType  String?
+  tags         String[]
+  url          String
+  canonicalUrl String
+  featuredImage String?
+  images       String[]
+  priceMin     Float?
+  priceMax     Float?
+  currency     String?
+  isAvailable  Boolean?
+  publishedAt  DateTime?
+  firstSeenAt  DateTime  @default(now())
+  lastSeenAt   DateTime  @default(now())
+  metadata     Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  trafficScore       Int?
+  trafficTrend       TrafficTrend?
+  trafficBreakdown   Json?
+  trafficUpdatedAt   DateTime?
+  trafficReasonCodes String[] @default([])
+
+  /// Visual / structural importance within the store catalog (0–100), see prominenceBreakdown.
+  prominenceScore       Int?
+  prominenceLevel       ProminenceLevel?
+  prominenceBreakdown   Json?
+  prominenceUpdatedAt   DateTime?
+  prominenceReasonCodes String[] @default([])
+
+  winningProbabilityScore Int?
+  opportunityLevel        OpportunityLevel?
+  fusionReasonCodes       String[] @default([])
+  fusionBreakdown         Json?
+  opportunityUpdatedAt    DateTime?
+
+  collectionMemberships CollectionProduct[]
+  entityLinks           EntityLink[]
+  confidenceScores      ConfidenceScore[]
+
+  @@unique([storeId, handle])
+  @@index([storeId])
+  @@index([handle])
+  @@index([isAvailable])
+  @@index([firstSeenAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// COLLECTION — Normalized product collection
+// ─────────────────────────────────────────────────────────────
+
+model Collection {
+  id            String    @id @default(cuid())
+  storeId       String
+  store         Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  externalId    String?
+  handle        String
+  title         String
+  description   String?
+  url           String
+  canonicalUrl  String
+  featuredImage String?
+  productCount  Int?
+  firstSeenAt   DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  metadata      Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  products         CollectionProduct[]
+  entityLinks      EntityLink[]
+  confidenceScores ConfidenceScore[]
+
+  @@unique([storeId, handle])
+  @@index([storeId])
+  @@index([handle])
+}
+
+// ─────────────────────────────────────────────────────────────
+// COLLECTION <-> PRODUCT join
+// ─────────────────────────────────────────────────────────────
+
+model CollectionProduct {
+  collectionId String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  position     Int?
+  addedAt      DateTime   @default(now())
+
+  @@id([collectionId, productId])
+  @@index([collectionId])
+  @@index([productId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// AD — Normalized Meta ad record
+// ─────────────────────────────────────────────────────────────
+
+model Ad {
+  id             String     @id @default(cuid())
+  externalId     String     @unique
+  pageId         String?
+  pageName       String?
+  pageUrl        String?
+  adText         String?
+  adTitle        String?
+  adBody         String?
+  callToAction   String?
+  adImageUrl     String?
+  adVideoUrl     String?
+  destinationUrl String?
+  canonicalUrl   String?
+  platforms      Platform[]
+  countries      String[]
+  startDate      DateTime?
+  endDate        DateTime?
+  isActive       Boolean?
+  impressionsMin Int?
+  impressionsMax Int?
+  spendMin       Float?
+  spendMax       Float?
+  currency       String?
+  firstSeenAt    DateTime   @default(now())
+  lastSeenAt     DateTime   @default(now())
+  metadata       Json?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  landingPages     LandingPage[]
+  entityLinks      EntityLink[]
+  confidenceScores ConfidenceScore[]
+
+  winningProbabilityScore Int?
+  opportunityLevel        OpportunityLevel?
+  fusionReasonCodes       String[] @default([])
+  fusionBreakdown         Json?
+  opportunityUpdatedAt    DateTime?
+
+  @@index([pageId])
+  @@index([isActive])
+  @@index([startDate])
+  @@index([firstSeenAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// LANDING PAGE — Destination URLs discovered from ads/stores
+// ─────────────────────────────────────────────────────────────
+
+model LandingPage {
+  id               String    @id @default(cuid())
+  url              String    @unique
+  domain           String
+  path             String
+  title            String?
+  description      String?
+  ogTitle          String?
+  ogDescription    String?
+  ogImage          String?
+  h1Text           String?
+  hasCheckout      Boolean?
+  hasShopifySignal Boolean?
+  httpStatus       Int?
+  crawledAt        DateTime?
+  firstSeenAt      DateTime  @default(now())
+  lastSeenAt       DateTime  @default(now())
+  metadata         Json?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  ads              Ad[]
+  entityLinks      EntityLink[]
+  confidenceScores ConfidenceScore[]
+
+  @@index([domain])
+  @@index([firstSeenAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// ENTITY LINK — Cross-reference between raw records and normalized entities
+// ─────────────────────────────────────────────────────────────
+
+model EntityLink {
+  id          String     @id @default(cuid())
+  rawRecordId String
+  rawRecord   RawRecord  @relation(fields: [rawRecordId], references: [id], onDelete: Cascade)
+  entityType  EntityType
+  entityId    String
+
+  adId          String?
+  ad            Ad?          @relation(fields: [adId], references: [id], onDelete: SetNull)
+  storeId       String?
+  store         Store?       @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  productId     String?
+  product       Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
+  collectionId  String?
+  collection    Collection?  @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+  landingPageId String?
+  landingPage   LandingPage? @relation(fields: [landingPageId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  /// Optional strength 0–1 for lineage quality (ingestion default 1).
+  linkStrength     Float?
+  /// e.g. ingestion | inferred_confirm | domain_match
+  linkProvenance   String?
+  linkMetadata     Json?
+  firstConfirmedAt DateTime?
+  lastConfirmedAt  DateTime?
+  staleAt          DateTime?
+
+  @@unique([rawRecordId, entityType, entityId])
+  @@index([rawRecordId])
+  @@index([entityType, entityId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// CONFIDENCE SCORE — Scoring metadata per normalized entity
+// ─────────────────────────────────────────────────────────────
+
+model ConfidenceScore {
+  id                  String          @id @default(cuid())
+  entityType          EntityType
+  entityId            String
+  overallScore        Float
+  level               ConfidenceLevel
+  sourceScore         Float
+  completenessScore   Float
+  confirmationScore   Float
+  urlValidityScore    Float
+  linkageScore        Float
+  breakdown           Json
+  /// Parallel explainable structure for intelligence v2 (does not replace breakdown for legacy readers).
+  breakdownV2         Json?
+  reasonCodes         String[]        @default([])
+  scoringVersion      Int             @default(1)
+  syncCount           Int             @default(1)
+  lastScoredAt        DateTime        @default(now())
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  adId          String?
+  ad            Ad?          @relation(fields: [adId], references: [id], onDelete: Cascade)
+  storeId       String?
+  store         Store?       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  productId     String?
+  product       Product?     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  collectionId  String?
+  collection    Collection?  @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  landingPageId String?
+  landingPage   LandingPage? @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
+
+  @@unique([entityType, entityId])
+  @@index([entityType, entityId])
+  @@index([overallScore])
+  @@index([level])
+}
+
+// ─────────────────────────────────────────────────────────────
+// INFERRED LINK — Deterministic graph edges without raw-record lineage
+// ─────────────────────────────────────────────────────────────
+
+model InferredLink {
+  id              String     @id @default(cuid())
+  fromEntityType  EntityType
+  fromEntityId    String
+  toEntityType    EntityType
+  toEntityId      String
+  strength        Float      @default(0.5)
+  sourceReason    String
+  metadata        Json?
+  firstLinkedAt   DateTime   @default(now())
+  lastConfirmedAt DateTime   @default(now())
+  staleAt         DateTime?
+
+  @@unique([fromEntityType, fromEntityId, toEntityType, toEntityId])
+  @@index([fromEntityType, fromEntityId])
+  @@index([toEntityType, toEntityId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// MERGE CANDIDATE — Duplicate / merge intelligence (not applied automatically)
+// ─────────────────────────────────────────────────────────────
+
+model MergeCandidate {
+  id                  String              @id @default(cuid())
+  entityType          EntityType
+  primaryEntityId     String
+  candidateEntityId   String
+  level               MergeCandidateLevel
+  confidence          Float
+  mergeReason         String
+  supportingEntityIds Json
+  conflictingFields   Json?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  lastConfirmedAt     DateTime?
+
+  @@unique([entityType, primaryEntityId, candidateEntityId])
+  @@index([entityType, primaryEntityId])
+  @@index([level])
+}
+
+// ─────────────────────────────────────────────────────────────
+// INTELLIGENCE SIGNAL — Stored observations for future alerting / dashboards
+// ─────────────────────────────────────────────────────────────
+
+model IntelligenceSignal {
+  id               String         @id @default(cuid())
+  type             String
+  severity         SignalSeverity @default(INFO)
+  confidence       Float          @default(0.5)
+  relatedEntityIds Json
+  evidence         Json?
+  firstSeenAt      DateTime       @default(now())
+  lastSeenAt       DateTime       @default(now())
+  active           Boolean        @default(true)
+  dedupeKey        String?        @unique
+
+  @@index([type, active])
+  @@index([lastSeenAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// WATCH ITEM — Internal bookmarking
+// ─────────────────────────────────────────────────────────────
+
+model WatchItem {
+  id         String     @id @default(cuid())
+  entityType EntityType
+  entityId   String
+  label      String?
+  notes      String?
+  tags       String[]
+  addedBy    String     @default("admin")
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@unique([entityType, entityId])
+  @@index([entityType])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// SYNC LOG — Detailed log entries per job
+// ─────────────────────────────────────────────────────────────
+
+model SyncLog {
+  id       String        @id @default(cuid())
+  sourceId String
+  source   Source        @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  jobId    String?
+  job      IngestionJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  level    String
+  message  String
+  data     Json?
+  createdAt DateTime     @default(now())
+
+  @@index([sourceId])
+  @@index([jobId])
+  @@index([level])
+  @@index([createdAt])
+}
