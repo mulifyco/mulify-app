@@ -52,15 +52,15 @@ function trendLabel(trend: string | null | undefined): string {
 function trendChipClass(trend: string | null | undefined): string {
   if (trend === "RISING") return "bg-emerald-950/50 text-emerald-400 border-emerald-800/60";
   if (trend === "FALLING") return "bg-rose-950/40 text-rose-400 border-rose-800/50";
-  return "bg-gray-800 text-gray-400 border-gray-700";
+  return "bg-surface text-muted border-border";
 }
 
 function prominenceLevelChipClass(level: string | null | undefined): string {
   if (level === "HERO") return "bg-amber-950/50 text-amber-300 border-amber-700/50";
   if (level === "FEATURED") return "bg-violet-950/45 text-violet-300 border-violet-800/50";
-  if (level === "STANDARD") return "bg-gray-800 text-gray-300 border-gray-700";
-  if (level === "WEAK") return "bg-slate-900 text-slate-500 border-slate-800";
-  return "bg-gray-800 text-gray-500 border-gray-700";
+  if (level === "STANDARD") return "bg-surface text-muted border-border";
+  if (level === "WEAK") return "bg-surface-2 text-muted-2 border-border";
+  return "bg-surface text-muted-2 border-border";
 }
 
 function prominenceLevelLabel(level: string | null | undefined): string {
@@ -72,8 +72,8 @@ function opportunityLevelChipClass(level: string | null | undefined): string {
   if (level === "BREAKOUT") return "bg-amber-950/55 text-amber-200 border-amber-600/50";
   if (level === "STRONG") return "bg-emerald-950/45 text-emerald-300 border-emerald-800/50";
   if (level === "WATCH") return "bg-orange-950/35 text-orange-300 border-orange-900/45";
-  if (level === "WEAK") return "bg-slate-900 text-slate-500 border-slate-800";
-  return "bg-gray-800 text-gray-500 border-gray-700";
+  if (level === "WEAK") return "bg-surface-2 text-muted-2 border-border";
+  return "bg-surface text-muted-2 border-border";
 }
 
 function opportunityLevelLabel(level: string | null | undefined): string {
@@ -211,8 +211,8 @@ export default function IntelligenceContextPanel({
           <div className="flex flex-wrap items-center gap-3">
             {trafficScore != null && (
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-white tabular-nums">{trafficScore}</span>
-                <span className="text-[11px] text-gray-500 uppercase">/ 100</span>
+                <span className="text-2xl font-bold text-foreground tabular-nums">{trafficScore}</span>
+                <span className="text-[11px] text-muted-2 uppercase">/ 100</span>
               </div>
             )}
             {trafficTrend && (
@@ -223,7 +223,7 @@ export default function IntelligenceContextPanel({
               </span>
             )}
             {trafficUpdatedAt && (
-              <span className="text-[10px] text-gray-600">
+              <span className="text-[10px] text-muted-2">
                 Updated{" "}
                 {trafficUpdatedAt instanceof Date
                   ? trafficUpdatedAt.toISOString().slice(0, 10)
@@ -240,7 +240,7 @@ export default function IntelligenceContextPanel({
                 {trafficReasonCodes.slice(0, 20).map((c) => (
                   <span
                     key={c}
-                    className="text-[10px] px-2 py-0.5 rounded bg-gray-900/80 text-cyan-200/70 font-mono"
+                    className="text-[10px] px-2 py-0.5 rounded bg-surface text-cyan-200/70 font-mono"
                   >
                     {c}
                   </span>
@@ -262,9 +262,9 @@ export default function IntelligenceContextPanel({
       {hasCatalogProminence && catalogProminence && (
         <div className="rounded-lg border border-amber-900/35 bg-amber-950/10 px-3 py-3 space-y-2">
           <div className="text-[11px] font-semibold text-amber-400 uppercase">Catalog prominence</div>
-          <p className="text-[11px] text-gray-400 leading-relaxed">
+          <p className="text-[11px] text-muted leading-relaxed">
             Avg score{" "}
-            <span className="text-gray-200 tabular-nums">
+            <span className="text-foreground tabular-nums">
               {catalogProminence.productsWithProminence === 0
                 ? "— (run prominence recompute)"
                 : catalogProminence.avgProminence != null
@@ -278,7 +278,7 @@ export default function IntelligenceContextPanel({
             Scored {catalogProminence.productsWithProminence.toLocaleString()} /{" "}
             {catalogProminence.productTotal.toLocaleString()} products
           </p>
-          <p className="text-[10px] text-gray-600">
+          <p className="text-[10px] text-muted-2">
             Per-product prominence blends PDP ads, collections, media, sync confirmations, and store traffic
             lift.
           </p>
@@ -291,8 +291,8 @@ export default function IntelligenceContextPanel({
           <div className="flex flex-wrap items-center gap-3">
             {prominenceScore != null && (
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-white tabular-nums">{prominenceScore}</span>
-                <span className="text-[11px] text-gray-500 uppercase">/ 100</span>
+                <span className="text-2xl font-bold text-foreground tabular-nums">{prominenceScore}</span>
+                <span className="text-[11px] text-muted-2 uppercase">/ 100</span>
               </div>
             )}
             {prominenceLevel && (
@@ -303,7 +303,7 @@ export default function IntelligenceContextPanel({
               </span>
             )}
             {prominenceUpdatedAt && (
-              <span className="text-[10px] text-gray-600">
+              <span className="text-[10px] text-muted-2">
                 Updated{" "}
                 {prominenceUpdatedAt instanceof Date
                   ? prominenceUpdatedAt.toISOString().slice(0, 10)
@@ -320,7 +320,7 @@ export default function IntelligenceContextPanel({
                 {prominenceReasonCodes.slice(0, 22).map((c) => (
                   <span
                     key={c}
-                    className="text-[10px] px-2 py-0.5 rounded bg-gray-900/80 text-fuchsia-200/70 font-mono"
+                    className="text-[10px] px-2 py-0.5 rounded bg-surface text-fuchsia-200/70 font-mono"
                   >
                     {c}
                   </span>
@@ -333,7 +333,7 @@ export default function IntelligenceContextPanel({
               <div className="text-[10px] font-semibold text-fuchsia-500/80 uppercase mb-1">
                 Collection diversity
               </div>
-              <p className="text-[11px] text-gray-400 leading-relaxed">
+              <p className="text-[11px] text-muted leading-relaxed">
                 {insightsFromBreakdown.collectionDiversity}
               </p>
             </div>
@@ -343,7 +343,7 @@ export default function IntelligenceContextPanel({
               <div className="text-[10px] font-semibold text-fuchsia-500/80 uppercase mb-1">
                 Homepage inference
               </div>
-              <p className="text-[11px] text-gray-400 leading-relaxed">{insightsFromBreakdown.homepageNote}</p>
+              <p className="text-[11px] text-muted leading-relaxed">{insightsFromBreakdown.homepageNote}</p>
             </div>
           )}
           {prominenceBreakdown != null && (
@@ -363,10 +363,10 @@ export default function IntelligenceContextPanel({
           <div className="flex flex-wrap items-center gap-3">
             {winningProbabilityScore != null && (
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-white tabular-nums">
+                <span className="text-2xl font-bold text-foreground tabular-nums">
                   {winningProbabilityScore}
                 </span>
-                <span className="text-[11px] text-gray-500 uppercase">/ 100</span>
+                <span className="text-[11px] text-muted-2 uppercase">/ 100</span>
               </div>
             )}
             {opportunityLevel && (
@@ -377,7 +377,7 @@ export default function IntelligenceContextPanel({
               </span>
             )}
             {opportunityUpdatedAt && (
-              <span className="text-[10px] text-gray-600">
+              <span className="text-[10px] text-muted-2">
                 Updated{" "}
                 {opportunityUpdatedAt instanceof Date
                   ? opportunityUpdatedAt.toISOString().slice(0, 10)
@@ -408,7 +408,7 @@ export default function IntelligenceContextPanel({
                 {fusionReasonCodes.slice(0, 24).map((c) => (
                   <span
                     key={c}
-                    className="text-[10px] px-2 py-0.5 rounded bg-gray-900/80 text-lime-200/75 font-mono"
+                    className="text-[10px] px-2 py-0.5 rounded bg-surface text-lime-200/75 font-mono"
                   >
                     {c}
                   </span>
@@ -441,7 +441,7 @@ export default function IntelligenceContextPanel({
             {reasonCodes.slice(0, 16).map((c) => (
               <span
                 key={c}
-                className="text-[10px] px-2 py-0.5 rounded bg-gray-800 text-gray-400 font-mono"
+                className="text-[10px] px-2 py-0.5 rounded bg-surface text-muted font-mono"
               >
                 {c}
               </span>
@@ -462,17 +462,17 @@ export default function IntelligenceContextPanel({
               return (
                 <li
                   key={m.id}
-                  className="rounded border border-gray-800 bg-gray-900/40 px-3 py-2 flex flex-wrap gap-2 items-center justify-between"
+                  className="rounded border border-border bg-surface/60 px-3 py-2 flex flex-wrap gap-2 items-center justify-between"
                 >
-                  <span className="text-gray-500">
+                  <span className="text-muted-2">
                     {m.level} · {(m.confidence * 100).toFixed(0)}%
                   </span>
-                  <span className="text-gray-400">{m.mergeReason}</span>
+                  <span className="text-muted">{m.mergeReason}</span>
                   <div className="flex gap-2 w-full justify-end">
                     <Link href={toPrimary} className="text-indigo-400 font-mono">
                       {m.primaryEntityId.slice(0, 10)}…
                     </Link>
-                    <span className="text-gray-600">↔</span>
+                    <span className="text-muted-2">↔</span>
                     <Link href={toCand} className="text-indigo-400 font-mono">
                       {m.candidateEntityId.slice(0, 10)}…
                     </Link>
@@ -514,17 +514,17 @@ function InferredList({
 }) {
   if (!rows.length) {
     return (
-      <div className="rounded border border-gray-800/80 bg-gray-900/20 p-3 text-xs text-gray-600">
+      <div className="rounded border border-border/80 bg-surface/30 p-3 text-xs text-muted-2">
         {title}: none
       </div>
     );
   }
   return (
-    <div className="rounded border border-gray-800/80 overflow-hidden">
-      <div className="px-3 py-2 border-b border-gray-800 text-[11px] font-semibold text-gray-500 uppercase">
+    <div className="rounded border border-border/80 overflow-hidden">
+      <div className="px-3 py-2 border-b border-border text-[11px] font-semibold text-muted-2 uppercase">
         {title}
       </div>
-      <ul className="divide-y divide-gray-800/60 max-h-56 overflow-y-auto">
+      <ul className="divide-y divide-border/60 max-h-56 overflow-y-auto">
         {rows.slice(0, 12).map((r) => {
           const otherType = direction === "out" ? r.toEntityType : r.fromEntityType;
           const otherId = direction === "out" ? r.toEntityId : r.fromEntityId;
@@ -532,18 +532,18 @@ function InferredList({
           return (
             <li key={r.id} className="px-3 py-2 text-[11px] space-y-1">
               <div className="flex justify-between gap-2">
-                <span className="text-gray-500">{otherType}</span>
-                <span className="text-gray-600 tabular-nums">
+                <span className="text-muted-2">{otherType}</span>
+                <span className="text-muted-2 tabular-nums">
                   {(r.strength * 100).toFixed(0)}%{r.staleAt ? " · stale" : ""}
                 </span>
               </div>
-              <div className="text-gray-500">{r.sourceReason}</div>
+              <div className="text-muted-2">{r.sourceReason}</div>
               {path ? (
                 <Link href={path} className="text-indigo-400 font-mono truncate block">
                   {otherId}
                 </Link>
               ) : (
-                <code className="text-gray-600 font-mono truncate block">{otherId}</code>
+                <code className="text-muted-2 font-mono truncate block">{otherId}</code>
               )}
             </li>
           );

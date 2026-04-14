@@ -3,7 +3,7 @@
  * Intentionally decoupled from Prisma — portable across jobs, tests, and future workers.
  */
 
-import type { SourceType, JobStatus, Platform } from "@/types";
+import type { SourceType, JobStatus, Platform, CreativeType } from "@/types";
 
 export type { SourceType, JobStatus, Platform };
 
@@ -102,6 +102,8 @@ export interface AdapterRuntimeConfigBase {
   sourceConfigJson: unknown;
   /** Source row name — optional log context only. */
   sourceName?: string | null;
+  /** Optional `Source.pageUrl` for types that read the column (e.g. TikTok profile). */
+  sourcePageUrl?: string | null;
 }
 
 // ─── Normalization outcome ───────────────────────────────────────────────────
@@ -131,6 +133,8 @@ export interface RecordProcessingOutcome {
   warning?: string;
   error?: string;
   recoverable: boolean;
+  /** Same payload hash as prior ingest — normalization intentionally skipped. */
+  duplicateSuppressed?: boolean;
 }
 
 // ─── Batch / run metrics ─────────────────────────────────────────────────────
@@ -173,6 +177,11 @@ export interface SyncRunSummary {
 
 export interface AdUpsertInput {
   externalId: string;
+  /** Primary platform on `Ad` (clustering / boards); falls back to first of `platforms` when omitted. */
+  platform?: Platform;
+  creativeType?: CreativeType;
+  creativeUrl?: string;
+  thumbnailUrl?: string;
   pageId?: string;
   pageName?: string;
   pageUrl?: string;

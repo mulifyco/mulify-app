@@ -67,7 +67,7 @@ export default async function StoresPage({ searchParams }: Props) {
         description="Shopify storefront intelligence — catalog scale, LP graph links, crawl freshness"
       />
 
-      <div className="flex flex-wrap items-center gap-3 mb-4 sticky top-0 z-10 py-2 -mt-2 bg-[#0c0d10]/95 backdrop-blur-sm border-b border-gray-800/80">
+      <div className="flex flex-wrap items-center gap-3 mb-4 sticky top-0 z-10 py-2 -mt-2 bg-background/95 backdrop-blur-sm border-b border-border">
         <Suspense fallback={null}>
           <SearchBar placeholder="Domain or store name…" />
         </Suspense>
@@ -145,52 +145,52 @@ export default async function StoresPage({ searchParams }: Props) {
             ]}
           />
         </Suspense>
-        <Link href="/stores" className="text-xs text-gray-500 hover:text-gray-400 ml-auto">
+        <Link href="/stores" className="text-xs text-muted hover:opacity-80 ml-auto">
           Reset
         </Link>
       </div>
 
-      <div className="rounded-lg border border-gray-800 overflow-x-auto">
+      <div className="rounded-lg border border-border bg-card overflow-x-auto shadow-sm">
         <table className="w-full text-sm min-w-[1120px]">
           <thead>
-            <tr className="bg-gray-900/80 border-b border-gray-800 text-left">
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+            <tr className="bg-surface-2 border-b border-border text-left">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Domain
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Platform
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Status
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase text-right">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase text-right">
                 Products
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase text-right">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase text-right">
                 Collections
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase text-right">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase text-right">
                 LP links
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Confidence
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Last crawl
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Seen
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Flags
               </th>
               <th className="px-3 py-2.5 w-10" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-800/60">
+          <tbody className="divide-y divide-border">
             {result.data.length === 0 ? (
               <tr>
-                <td colSpan={11} className="px-3 py-10 text-center text-gray-600">
+                <td colSpan={11} className="px-3 py-10 text-center text-muted-2">
                   No stores match filters.
                 </td>
               </tr>
@@ -204,39 +204,39 @@ export default async function StoresPage({ searchParams }: Props) {
                   landingPageLinkCount: store.landingPageLinkCount,
                 });
                 return (
-                  <tr key={store.id} className="hover:bg-gray-900/40">
+                  <tr key={store.id} className="hover:bg-surface-2/70">
                     <td className="px-3 py-2.5">
-                      <div className="font-medium text-gray-100">{store.domain}</div>
+                      <div className="font-medium text-foreground">{store.domain}</div>
                       {store.name && (
-                        <div className="text-xs text-gray-500 truncate max-w-[220px]">{store.name}</div>
+                        <div className="text-xs text-muted truncate max-w-[220px]">{store.name}</div>
                       )}
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-gray-500">{store.platform}</td>
+                    <td className="px-3 py-2.5 text-xs text-muted">{store.platform}</td>
                     <td className="px-3 py-2.5">{statusBadge(store.isActive ? "ACTIVE" : "PAUSED")}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-gray-300">
+                    <td className="px-3 py-2.5 text-right tabular-nums text-foreground">
                       {store._count.products.toLocaleString()}
                     </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-gray-400">
+                    <td className="px-3 py-2.5 text-right tabular-nums text-muted">
                       {store._count.collections.toLocaleString()}
                     </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-gray-500">
+                    <td className="px-3 py-2.5 text-right tabular-nums text-muted">
                       {store.landingPageLinkCount}
                     </td>
                     <td className="px-3 py-2.5">
                       <ConfidenceInline score={store.confidenceScores[0] ?? null} />
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-gray-500">
+                    <td className="px-3 py-2.5 text-xs text-muted">
                       {store.lastCrawledAt ? timeAgo(store.lastCrawledAt) : "—"}
                     </td>
-                    <td className="px-3 py-2.5 text-[11px] text-gray-500 leading-snug">
+                    <td className="px-3 py-2.5 text-[11px] text-muted leading-snug">
                       <div>{timeAgo(store.firstSeenAt)}</div>
-                      <div className="text-gray-600">{timeAgo(store.lastSeenAt)}</div>
+                      <div className="text-muted-2">{timeAgo(store.lastSeenAt)}</div>
                     </td>
                     <td className="px-3 py-2.5">
                       <EntityWarningChips items={warnings} />
                     </td>
                     <td className="px-3 py-2.5">
-                      <Link href={`/stores/${store.id}`} className="text-xs text-indigo-400">
+                      <Link href={`/stores/${store.id}`} className="text-xs text-indigo-600 hover:opacity-80">
                         Open
                       </Link>
                     </td>

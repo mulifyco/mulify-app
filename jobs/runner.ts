@@ -6,6 +6,9 @@ import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import type { AdapterRunResult, SourceType } from "@/types";
 import type { SyncRunSummary } from "@/lib/sources/shared/types";
+import { isDiscoveryOnlySource } from "@/lib/admin/source-capability";
+import { isSourceRunnableByScheduler } from "@/server/services/source-reliability.service";
+import { sweepStuckIngestionJobs } from "@/server/services/stuck-job-sweep.service";
 
 function syncSummaryToAdapterResult(s: SyncRunSummary): AdapterRunResult {
   return {
@@ -47,6 +50,30 @@ async function runSyncForSourceType(
         initialJobCursor: cursor,
       });
     }
+    case "SHOPIFY_DOMAIN": {
+      const { runShopifyDomainSync } = await import("@/lib/sources/jobs");
+      return runShopifyDomainSync({
+        sourceId,
+        triggeredBy,
+        initialJobCursor: cursor,
+      });
+    }
+    case "TIKTOK_PAGE": {
+      const { runTikTokPageSync } = await import("@/lib/sources/jobs");
+      return runTikTokPageSync({
+        sourceId,
+        triggeredBy,
+        initialJobCursor: cursor,
+      });
+    }
+    case "KEYWORD":
+    case "META_PAGE":
+    case "CATEGORY": {
+      throw new Error(
+        `Source type ${sourceType} is currently disabled in ingestion-first mode. ` +
+          "Use SHOPIFY_DOMAIN / SHOPIFY_STOREFRONT for now."
+      );
+    }
     default:
       throw new Error(`No ingestion entrypoint registered for source type: ${sourceType}`);
   }
@@ -60,8 +87,19 @@ export async function runIngestionJob(
   sourceId: string,
   triggeredBy = "manual",
   cursor?: string
-): Promise<AdapterRunResult> {
+): Promise<
+  | (AdapterRunResult & { ok: true })
+  | {
+      ok: false;
+      code: "DISCOVERY_ONLY_SOURCE" | "SOURCE_DISABLED" | "SOURCE_COOLDOWN";
+      message: string;
+    }
+> {
   logger.info("[runner] Starting ingestion job", { sourceId, triggeredBy });
+
+  await sweepStuckIngestionJobs().catch((e) =>
+    logger.warn("[runner] stuck job sweep failed (non-fatal)", { error: String(e) })
+  );
 
   const source = await prisma.source.findUnique({
     where: { id: sourceId },
@@ -69,6 +107,19 @@ export async function runIngestionJob(
 
   if (!source) {
     throw new Error(`Source not found: ${sourceId}`);
+  }
+
+  const reliabilityGate = isSourceRunnableByScheduler(source, triggeredBy);
+  if (!reliabilityGate.ok) {
+    logger.info("[runner] Skipped ingestion (reliability)", {
+      sourceId,
+      code: reliabilityGate.code,
+    });
+    return {
+      ok: false,
+      code: reliabilityGate.code,
+      message: reliabilityGate.message,
+    };
   }
 
   if (source.status === "PAUSED") {
@@ -86,8 +137,16 @@ export async function runIngestionJob(
     );
   }
 
+  if (isDiscoveryOnlySource(source.type as SourceType)) {
+    return {
+      ok: false,
+      code: "DISCOVERY_ONLY_SOURCE",
+      message: "This source type is discovery-only and cannot be run directly.",
+    };
+  }
+
   const summary = await runSyncForSourceType(source.type, sourceId, triggeredBy, cursor);
-  const result = syncSummaryToAdapterResult(summary);
+  const result = { ...syncSummaryToAdapterResult(summary), ok: true as const };
 
   logger.info("[runner] Job complete", {
     jobId: result.jobId,
@@ -113,7 +172,15 @@ export async function runAllActiveSources(triggeredBy = "cron"): Promise<Adapter
   for (const source of sources) {
     try {
       const result = await runIngestionJob(source.id, triggeredBy);
-      results.push(result);
+      if (result.ok) {
+        results.push(result);
+      } else {
+        logger.info("[runner] Skipped source", {
+          sourceId: source.id,
+          sourceName: source.name,
+          code: result.code,
+        });
+      }
     } catch (err) {
       logger.error("[runner] Failed to run job for source", {
         sourceId: source.id,

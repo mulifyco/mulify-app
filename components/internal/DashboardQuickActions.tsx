@@ -49,9 +49,32 @@ export default function DashboardQuickActions() {
     }
   }
 
+  const triageLinks = (
+    <>
+      <Link
+        href="/jobs?status=FAILED"
+        className="px-3 py-1.5 text-xs rounded border border-border text-muted hover:bg-surface-2"
+      >
+        Failed jobs
+      </Link>
+      <Link
+        href="/ads?cmax=0.5"
+        className="px-3 py-1.5 text-xs rounded border border-border text-muted hover:bg-surface-2"
+      >
+        Low confidence (ads)
+      </Link>
+      <Link
+        href="/raw-records?status=FAILED"
+        className="px-3 py-1.5 text-xs rounded border border-border text-muted hover:bg-surface-2"
+      >
+        Failed raw records
+      </Link>
+    </>
+  );
+
   return (
-    <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-4">
-      <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+    <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+      <div className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">
         Quick actions
       </div>
       <div className="flex flex-wrap gap-2">
@@ -59,7 +82,7 @@ export default function DashboardQuickActions() {
           type="button"
           disabled={busy !== null}
           onClick={() => runFirst("META_ADS", "Meta")}
-          className="px-3 py-1.5 text-xs rounded bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50"
+          className="px-3 py-1.5 text-xs rounded bg-primary hover:opacity-90 text-primary-foreground disabled:opacity-50 border border-border"
         >
           {busy === "META_ADS" ? "Running…" : "Run Meta sync"}
         </button>
@@ -67,30 +90,22 @@ export default function DashboardQuickActions() {
           type="button"
           disabled={busy !== null}
           onClick={() => runFirst("SHOPIFY_STOREFRONT", "Shopify")}
-          className="px-3 py-1.5 text-xs rounded bg-violet-700 hover:bg-violet-600 text-white disabled:opacity-50"
+          className="px-3 py-1.5 text-xs rounded bg-surface-2 hover:opacity-90 text-foreground disabled:opacity-50 border border-border"
         >
           {busy === "SHOPIFY_STOREFRONT" ? "Running…" : "Run Shopify sync"}
         </button>
-        <Link
-          href="/jobs?status=FAILED"
-          className="px-3 py-1.5 text-xs rounded border border-gray-700 text-gray-300 hover:bg-gray-800"
-        >
-          Failed jobs
-        </Link>
-        <Link
-          href="/ads?cmax=0.5"
-          className="px-3 py-1.5 text-xs rounded border border-gray-700 text-gray-300 hover:bg-gray-800"
-        >
-          Low confidence (ads)
-        </Link>
-        <Link
-          href="/raw-records?status=FAILED"
-          className="px-3 py-1.5 text-xs rounded border border-gray-700 text-gray-300 hover:bg-gray-800"
-        >
-          Failed raw records
-        </Link>
+        <div className="hidden sm:contents">{triageLinks}</div>
       </div>
-      {msg && <p className="text-xs text-gray-400 mt-3">{msg}</p>}
+      <details className="sm:hidden mt-3 rounded-lg border border-border bg-surface-2/40 px-3 py-2">
+        <summary className="cursor-pointer text-xs font-medium text-muted list-none flex items-center justify-between gap-2">
+          <span>Triage & quality</span>
+          <span className="text-muted-2" aria-hidden>
+            ▾
+          </span>
+        </summary>
+        <div className="flex flex-wrap gap-2 pt-3">{triageLinks}</div>
+      </details>
+      {msg && <p className="text-xs text-muted mt-3">{msg}</p>}
     </div>
   );
 }

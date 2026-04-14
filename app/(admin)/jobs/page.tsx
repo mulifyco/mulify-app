@@ -83,7 +83,7 @@ export default async function JobsPage({ searchParams }: Props) {
         description="Ingestion runs — duration, throughput, warnings, and errors"
       />
 
-      <div className="flex flex-wrap items-center gap-4 mb-4 sticky top-0 z-10 py-2 -mt-2 bg-[#0c0d10]/95 backdrop-blur-sm border-b border-gray-800/80">
+      <div className="flex flex-wrap items-center gap-4 mb-4 sticky top-0 z-10 py-2 -mt-2 bg-background/95 backdrop-blur-sm border-b border-border">
         <Suspense fallback={null}>
           <SearchBar placeholder="Job ID or source name…" />
         </Suspense>
@@ -106,58 +106,58 @@ export default async function JobsPage({ searchParams }: Props) {
             }))}
           />
         </Suspense>
-        <Link href="/jobs" className="text-xs text-gray-500 hover:text-gray-400 ml-auto">
+        <Link href="/jobs" className="text-xs text-muted hover:opacity-80 ml-auto">
           Clear filters
         </Link>
       </div>
 
-      <div className="rounded-lg border border-gray-800 overflow-x-auto">
+      <div className="rounded-lg border border-border bg-card overflow-x-auto shadow-sm">
         <table className="w-full text-sm min-w-[1120px]">
           <thead>
-            <tr className="bg-gray-900/80 border-b border-gray-800 text-left">
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+            <tr className="bg-surface-2 border-b border-border text-left">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase tracking-wide">
                 Job ID
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase tracking-wide">
                 Source
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase tracking-wide">
                 Type
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase tracking-wide">
                 Status
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide text-right">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase tracking-wide text-right">
                 Fetched
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide text-right">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase tracking-wide text-right">
                 Norm
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide text-right">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase tracking-wide text-right">
                 Skip
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide text-right">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase tracking-wide text-right">
                 Err
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide text-right">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase tracking-wide text-right">
                 Warn
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase tracking-wide">
                 Duration
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase tracking-wide">
                 Started
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase tracking-wide">
                 Completed
               </th>
               <th className="px-3 py-2.5 w-10" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-800/60">
+          <tbody className="divide-y divide-border">
             {result.data.length === 0 ? (
               <tr>
-                <td colSpan={13} className="px-3 py-10 text-center text-gray-600">
+                <td colSpan={13} className="px-3 py-10 text-center text-muted-2">
                   No jobs match filters.
                 </td>
               </tr>
@@ -165,36 +165,36 @@ export default async function JobsPage({ searchParams }: Props) {
               result.data.map((job: JobRow) => {
                 const warn = jobWarningsCount(job.metadata);
                 return (
-                  <tr key={job.id} className={`hover:bg-gray-900/40 ${jobRowAccent(job.status)}`}>
-                    <td className="px-3 py-2.5 font-mono text-[11px] text-gray-500 max-w-[128px] truncate">
-                      <Link href={`/jobs/${job.id}`} className="hover:text-indigo-400">
+                  <tr key={job.id} className={`hover:bg-surface-2/70 ${jobRowAccent(job.status)}`}>
+                    <td className="px-3 py-2.5 font-mono text-[11px] text-muted max-w-[128px] truncate">
+                      <Link href={`/jobs/${job.id}`} className="hover:text-indigo-600">
                         {job.id}
                       </Link>
                     </td>
                     <td className="px-3 py-2.5">
-                      <div className="text-gray-200">{job.source.name}</div>
-                      <div className="text-[11px] text-gray-600">{job.source.type}</div>
+                      <div className="text-foreground">{job.source.name}</div>
+                      <div className="text-[11px] text-muted-2">{job.source.type}</div>
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-gray-500 max-w-[100px] truncate">
+                    <td className="px-3 py-2.5 text-xs text-muted max-w-[100px] truncate">
                       {jobTypeLabel(job.metadata, job.triggeredBy)}
                     </td>
                     <td className="px-3 py-2.5">{statusBadge(job.status)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-gray-400">{job.totalFetched}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-emerald-400/80">
+                    <td className="px-3 py-2.5 text-right tabular-nums text-muted">{job.totalFetched}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-emerald-600">
                       {job.totalNormalized}
                     </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-gray-500">{job.totalSkipped}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-red-400/80">{job.totalFailed}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-amber-400/90">{warn}</td>
-                    <td className="px-3 py-2.5 text-xs text-gray-500">{formatDuration(job.durationMs)}</td>
-                    <td className="px-3 py-2.5 text-xs text-gray-500">
+                    <td className="px-3 py-2.5 text-right tabular-nums text-muted">{job.totalSkipped}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-red-600">{job.totalFailed}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-amber-600">{warn}</td>
+                    <td className="px-3 py-2.5 text-xs text-muted">{formatDuration(job.durationMs)}</td>
+                    <td className="px-3 py-2.5 text-xs text-muted">
                       {job.startedAt ? timeAgo(job.startedAt) : timeAgo(job.createdAt)}
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-gray-500">
+                    <td className="px-3 py-2.5 text-xs text-muted">
                       {job.completedAt ? formatDate(job.completedAt) : "—"}
                     </td>
                     <td className="px-3 py-2.5">
-                      <Link href={`/jobs/${job.id}`} className="text-xs text-indigo-400">
+                      <Link href={`/jobs/${job.id}`} className="text-xs text-indigo-600 hover:opacity-80">
                         Detail
                       </Link>
                     </td>

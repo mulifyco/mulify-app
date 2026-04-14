@@ -75,7 +75,7 @@ export default async function ProductsPage({ searchParams }: Props) {
         description="Normalized catalog — pricing, media, collections, duplicate handles"
       />
 
-      <div className="flex flex-wrap items-center gap-3 mb-4 sticky top-0 z-10 py-2 -mt-2 bg-[#0c0d10]/95 backdrop-blur-sm border-b border-gray-800/80">
+      <div className="flex flex-wrap items-center gap-3 mb-4 sticky top-0 z-10 py-2 -mt-2 bg-background/95 backdrop-blur-sm border-b border-border">
         <Suspense fallback={null}>
           <SearchBar placeholder="Title, handle, vendor, id…" />
         </Suspense>
@@ -182,52 +182,55 @@ export default async function ProductsPage({ searchParams }: Props) {
             ]}
           />
         </Suspense>
-        <Link href="/products" className="text-xs text-gray-500 ml-auto">
+        <Link href="/products" className="text-xs text-muted ml-auto hover:opacity-80">
           Reset
         </Link>
       </div>
 
-      <div className="rounded-lg border border-gray-800 overflow-x-auto">
+      <div className="rounded-lg border border-border bg-card overflow-x-auto shadow-sm">
         <table className="w-full text-sm min-w-[1040px]">
           <thead>
-            <tr className="bg-gray-900/80 border-b border-gray-800 text-left">
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase w-12">
+            <tr className="bg-surface-2 border-b border-border text-left">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase w-12">
                 Img
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Product
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Store
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
+                Cluster
+              </th>
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Handle
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase text-right">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase text-right">
                 Price
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Avail.
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase text-right">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase text-right">
                 Coll.
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Confidence
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 First / last
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Flags
               </th>
               <th className="px-3 py-2.5 w-10" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-800/60">
+          <tbody className="divide-y divide-border">
             {result.data.length === 0 ? (
               <tr>
-                <td colSpan={11} className="px-3 py-10 text-center text-gray-600">
+                <td colSpan={11} className="px-3 py-10 text-center text-muted-2">
                   No products match filters.
                 </td>
               </tr>
@@ -250,47 +253,61 @@ export default async function ProductsPage({ searchParams }: Props) {
                   _count: p._count,
                   duplicateHandle: p.duplicateHandle,
                 });
+                const cluster = (p as unknown as { clusterMember?: { cluster?: { key: string; storeCount: number; winningScore: number; confidence: number } } })
+                  .clusterMember?.cluster;
                 return (
-                  <tr key={p.id} className="hover:bg-gray-900/40">
+                  <tr key={p.id} className="hover:bg-surface-2/70">
                     <td className="px-3 py-2.5 align-middle">
                       <ProductThumbCell src={p.featuredImage} title={p.title} />
                     </td>
                     <td className="px-3 py-2.5">
-                      <div className="text-gray-100 font-medium line-clamp-2 max-w-[200px]">{p.title}</div>
+                      <div className="text-foreground font-medium line-clamp-2 max-w-[200px]">{p.title}</div>
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-indigo-400/90">
-                      <Link href={`/stores/${p.store.id}`} className="hover:text-indigo-300">
+                    <td className="px-3 py-2.5 text-xs text-indigo-600">
+                      <Link href={`/stores/${p.store.id}`} className="hover:opacity-80">
                         {p.store.domain}
                       </Link>
                     </td>
-                    <td className="px-3 py-2.5 text-xs font-mono text-gray-500">{p.handle}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-gray-300 text-xs">
+                    <td className="px-3 py-2.5 text-[11px] text-muted">
+                      {cluster ? (
+                        <div className="space-y-0.5">
+                          <div className="text-foreground tabular-nums">
+                            win {cluster.winningScore} · stores {cluster.storeCount}
+                          </div>
+                          <div className="text-muted-2 font-mono truncate max-w-[180px]">{cluster.key}</div>
+                        </div>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 text-xs font-mono text-muted">{p.handle}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-foreground text-xs">
                       {price}
                     </td>
                     <td className="px-3 py-2.5 text-xs">
                       {p.isAvailable === true && (
-                        <span className="text-emerald-400/90">Yes</span>
+                        <span className="text-emerald-600">Yes</span>
                       )}
                       {p.isAvailable === false && (
-                        <span className="text-amber-500/90">No</span>
+                        <span className="text-amber-600">No</span>
                       )}
-                      {p.isAvailable == null && <span className="text-gray-600">—</span>}
+                      {p.isAvailable == null && <span className="text-muted-2">—</span>}
                     </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-gray-400">
+                    <td className="px-3 py-2.5 text-right tabular-nums text-muted">
                       {p._count.collectionMemberships}
                     </td>
                     <td className="px-3 py-2.5">
                       <ConfidenceInline score={p.confidenceScores[0] ?? null} />
                     </td>
-                    <td className="px-3 py-2.5 text-[11px] text-gray-500 leading-snug">
+                    <td className="px-3 py-2.5 text-[11px] text-muted leading-snug">
                       <div>{timeAgo(p.firstSeenAt)}</div>
-                      <div className="text-gray-600">{timeAgo(p.lastSeenAt)}</div>
+                      <div className="text-muted-2">{timeAgo(p.lastSeenAt)}</div>
                     </td>
                     <td className="px-3 py-2.5">
                       <EntityWarningChips items={warnings} />
                     </td>
                     <td className="px-3 py-2.5">
-                      <Link href={`/products/${p.id}`} className="text-xs text-indigo-400">
+                      <Link href={`/products/${p.id}`} className="text-xs text-indigo-600 hover:opacity-80">
                         Open
                       </Link>
                     </td>

@@ -7,11 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:migrate:prod": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
+    "worker": "tsx --env-file=.env.local src/workers/index.ts",
     "intelligence:recompute": "npx tsx scripts/intelligence-recompute.ts"
   },
   "prisma": {
@@ -23,14 +25,16 @@
     "axios": "^1.14.0",
     "bcryptjs": "^3.0.3",
     "cheerio": "^1.2.0",
+    "framer-motion": "^12.38.0",
     "next": "16.2.2",
     "next-auth": "^5.0.0-beta.30",
     "p-limit": "^7.3.0",
     "p-retry": "^8.0.0",
     "pg": "^8.20.0",
-    "prisma": "^7.6.0",
+    "playwright": "^1.55.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "stripe": "^22.0.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -42,6 +46,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
+    "prisma": "^7.6.0",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"

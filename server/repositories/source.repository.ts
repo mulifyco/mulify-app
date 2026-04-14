@@ -8,6 +8,9 @@ export interface CreateSourceInput {
   name: string;
   type: SourceType;
   config: Record<string, unknown>;
+  domain?: string;
+  pageUrl?: string;
+  query?: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -67,11 +70,57 @@ export const SourceRepository = {
   },
 
   async create(input: CreateSourceInput) {
+    const domain = input.domain?.trim() || undefined;
+    const pageUrl = input.pageUrl?.trim() || undefined;
+    const query = input.query?.trim() || undefined;
+
+    const cfg = input.config ?? {};
+    const cfgObj: Record<string, unknown> = cfg && typeof cfg === "object" ? cfg : {};
+    const cfgStr = (k: string): string | undefined => {
+      const v = cfgObj[k];
+      return typeof v === "string" && v.trim() ? v.trim() : undefined;
+    };
+    const cfgBool = (k: string): boolean | undefined => {
+      const v = cfgObj[k];
+      return typeof v === "boolean" ? v : undefined;
+    };
+    const cfgNum = (k: string): number | undefined => {
+      const v = cfgObj[k];
+      return typeof v === "number" && Number.isFinite(v) ? v : undefined;
+    };
+    const cfgStrArr = (k: string): string[] | undefined => {
+      const v = cfgObj[k];
+      if (!Array.isArray(v)) return undefined;
+      return v
+        .filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+        .map((x) => x.trim());
+    };
+
+    // For SHOPIFY_DOMAIN sources, treat `domain` as the primary configuration if user didn't provide config.
+    // We persist it into config too so adapters can resolve it without extra DB reads.
+    const config =
+      input.type === "SHOPIFY_DOMAIN"
+        ? ({
+            sourceDomain: domain ?? cfgStr("sourceDomain"),
+            storeUrl: cfgStr("storeUrl"),
+            targetDomains: cfgStrArr("targetDomains") ?? [],
+            fetchStoreMeta: cfgBool("fetchStoreMeta") ?? true,
+            fetchProducts: cfgBool("fetchProducts") ?? true,
+            fetchCollections: cfgBool("fetchCollections") ?? true,
+            maxProductsPerStore: cfgNum("maxProductsPerStore"),
+            maxCollectionsPerStore: cfgNum("maxCollectionsPerStore"),
+            pageSize: cfgNum("pageSize"),
+          } satisfies Record<string, unknown>)
+        : input.config;
+
     return prisma.source.create({
       data: {
         name: input.name,
         type: input.type,
-        config: input.config as never,
+        query,
+        pageUrl,
+        domain,
+        config: config as never,
         metadata: input.metadata as never,
         status: "PENDING",
       },
@@ -109,13 +158,30 @@ export const SourceRepository = {
 
   /** Last success / failed job + de-duplicated warning strings from recent runs. */
   async globalStats() {
-    const [total, byStatus] = await Promise.all([
+    const promoteScoreThreshold =
+      Number.parseInt(process.env.DISCOVERY_PROMOTE_SCORE ?? "70", 10) || 70;
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const [total, byStatus, activeCandidates, highConfidenceCandidates, promotedThisWeek] = await Promise.all([
       prisma.source.count(),
       prisma.source.groupBy({ by: ["status"], _count: true }),
+      prisma.discoveryCandidate.count({ where: { isPromoted: false } }).catch(() => 0),
+      prisma.discoveryCandidate
+        .count({ where: { isPromoted: false, discoveryScore: { gte: promoteScoreThreshold } } })
+        .catch(() => 0),
+      prisma.discoveryCandidate.count({ where: { isPromoted: true, promotedAt: { gte: weekAgo } } }).catch(() => 0),
     ]);
     const active = byStatus.find((s) => s.status === "ACTIVE")?._count ?? 0;
     const inError = byStatus.find((s) => s.status === "ERROR")?._count ?? 0;
-    return { total, active, inError };
+    return {
+      total,
+      active,
+      inError,
+      activeCandidates,
+      highConfidenceCandidates,
+      promotedThisWeek,
+      promoteScoreThreshold,
+    };
   },
 
   async getOperationalDigest(sourceId: string) {

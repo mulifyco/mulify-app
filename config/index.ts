@@ -121,6 +121,8 @@ export type AppConfig = ReturnType<typeof loadConfig>;
 
 /** Force mock payloads for both Meta and Shopify (explicit opt-in). */
 export function shouldMockAllSourceApis(): boolean {
+  // Safety: production must not run fixtures.
+  if (process.env.NODE_ENV === "production") return false;
   return getConfig().LIBRARY_MOCK_SOURCE_APIS === true;
 }
 

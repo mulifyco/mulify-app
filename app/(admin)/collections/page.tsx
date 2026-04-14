@@ -49,7 +49,7 @@ export default async function CollectionsPage({ searchParams }: Props) {
         description="Shopify collection intelligence — membership scale and confidence"
       />
 
-      <div className="flex flex-wrap items-center gap-4 mb-4 sticky top-0 z-10 py-2 -mt-2 bg-[#0c0d10]/95 backdrop-blur-sm border-b border-gray-800/80">
+      <div className="flex flex-wrap items-center gap-4 mb-4 sticky top-0 z-10 py-2 -mt-2 bg-background/95 backdrop-blur-sm border-b border-border">
         <Suspense fallback={null}>
           <SearchBar placeholder="Title or handle…" />
         </Suspense>
@@ -72,71 +72,71 @@ export default async function CollectionsPage({ searchParams }: Props) {
             ]}
           />
         </Suspense>
-        <Link href="/collections" className="text-xs text-gray-500 ml-auto">
+        <Link href="/collections" className="text-xs text-muted ml-auto hover:opacity-80">
           Reset
         </Link>
       </div>
 
-      <div className="rounded-lg border border-gray-800 overflow-x-auto">
+      <div className="rounded-lg border border-border bg-card overflow-x-auto shadow-sm">
         <table className="w-full text-sm min-w-[820px]">
           <thead>
-            <tr className="bg-gray-900/80 border-b border-gray-800 text-left">
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+            <tr className="bg-surface-2 border-b border-border text-left">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Title
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Handle
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Store
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase text-right">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase text-right">
                 Products
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Confidence
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 First seen
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Last seen
               </th>
               <th className="px-3 py-2.5 w-10" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-800/60">
+          <tbody className="divide-y divide-border">
             {result.data.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-3 py-10 text-center text-gray-600">
+                <td colSpan={8} className="px-3 py-10 text-center text-muted-2">
                   No collections match filters.
                 </td>
               </tr>
             ) : (
               result.data.map((col: CollectionRow) => (
-                <tr key={col.id} className="hover:bg-gray-900/40">
-                  <td className="px-3 py-2.5 text-gray-100 font-medium max-w-[220px] truncate">
+                <tr key={col.id} className="hover:bg-surface-2/70">
+                  <td className="px-3 py-2.5 text-foreground font-medium max-w-[220px] truncate">
                     {col.title}
                   </td>
-                  <td className="px-3 py-2.5 text-xs font-mono text-gray-500">{col.handle}</td>
+                  <td className="px-3 py-2.5 text-xs font-mono text-muted">{col.handle}</td>
                   <td className="px-3 py-2.5 text-xs">
                     <Link
                       href={`/stores/${col.store.id}`}
-                      className="text-indigo-400 hover:text-indigo-300"
+                      className="text-indigo-600 hover:opacity-80"
                     >
                       {col.store.domain}
                     </Link>
                   </td>
-                  <td className="px-3 py-2.5 text-right tabular-nums text-gray-300">
+                  <td className="px-3 py-2.5 text-right tabular-nums text-foreground">
                     {col._count.products.toLocaleString()}
                   </td>
                   <td className="px-3 py-2.5">
                     <ConfidenceInline score={col.confidenceScores[0] ?? null} />
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-gray-500">{timeAgo(col.firstSeenAt)}</td>
-                  <td className="px-3 py-2.5 text-xs text-gray-500">{timeAgo(col.lastSeenAt)}</td>
+                  <td className="px-3 py-2.5 text-xs text-muted">{timeAgo(col.firstSeenAt)}</td>
+                  <td className="px-3 py-2.5 text-xs text-muted">{timeAgo(col.lastSeenAt)}</td>
                   <td className="px-3 py-2.5">
-                    <Link href={`/collections/${col.id}`} className="text-xs text-indigo-400">
+                    <Link href={`/collections/${col.id}`} className="text-xs text-indigo-600 hover:opacity-80">
                       Open
                     </Link>
                   </td>

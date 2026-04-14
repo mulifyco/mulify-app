@@ -30,7 +30,7 @@ export default async function RawRecordDetailPage({ params }: Props) {
       <div>
         <PageHeader title="Raw record" description={id} />
         <QueryErrorState message={e instanceof Error ? e.message : "Failed to load record."} />
-        <Link href="/raw-records" className="text-sm text-indigo-400 mt-4 inline-block">
+        <Link href="/raw-records" className="text-sm text-indigo-600 hover:opacity-80 mt-4 inline-block">
           ← Back
         </Link>
       </div>
@@ -46,7 +46,7 @@ export default async function RawRecordDetailPage({ params }: Props) {
         title="Raw record"
         description={`${record.entityType} · ${record.externalId}`}
         action={
-          <Link href="/raw-records" className="text-sm text-gray-400 hover:text-gray-200">
+          <Link href="/raw-records" className="text-sm text-muted hover:opacity-80">
             ← Back
           </Link>
         }
@@ -54,8 +54,8 @@ export default async function RawRecordDetailPage({ params }: Props) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-4">
-          <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-4">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3 tracking-wide">
+          <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+            <h3 className="text-xs font-semibold text-muted uppercase mb-3 tracking-wide">
               Ingestion metadata
             </h3>
             <dl className="space-y-2 text-sm">
@@ -71,42 +71,42 @@ export default async function RawRecordDetailPage({ params }: Props) {
                 ["Normalized at", record.normalizedAt ? formatDate(record.normalizedAt) : "—"],
               ].map(([label, value]) => (
                 <div key={String(label)} className="flex gap-3">
-                  <dt className="w-32 text-gray-600 flex-none text-xs shrink-0">{label}</dt>
-                  <dd className="text-gray-300 font-mono text-xs break-all min-w-0">{value}</dd>
+                  <dt className="w-32 text-muted-2 flex-none text-xs shrink-0">{label}</dt>
+                  <dd className="text-foreground font-mono text-xs break-all min-w-0">{value}</dd>
                 </div>
               ))}
               <div className="flex gap-3">
-                <dt className="w-32 text-gray-600 flex-none text-xs shrink-0">Source</dt>
-                <dd className="text-gray-300 text-xs min-w-0">
-                  <Link href={`/sources/${record.sourceId}`} className="text-indigo-400 hover:text-indigo-300">
-                    {record.source.name}
+                <dt className="w-32 text-muted-2 flex-none text-xs shrink-0">Source</dt>
+                <dd className="text-foreground text-xs min-w-0">
+                  <Link href={`/sources/${record.sourceId}`} className="text-indigo-600 hover:opacity-80">
+                    {record.source?.name ?? "Unknown"}
                   </Link>
-                  <span className="text-gray-600 ml-2">{record.source.type}</span>
+                  <span className="text-muted-2 ml-2">{record.source?.type ?? "—"}</span>
                 </dd>
               </div>
               <div className="flex gap-3">
-                <dt className="w-32 text-gray-600 flex-none text-xs shrink-0">Ingestion job</dt>
-                <dd className="text-gray-300 text-xs min-w-0">
+                <dt className="w-32 text-muted-2 flex-none text-xs shrink-0">Ingestion job</dt>
+                <dd className="text-foreground text-xs min-w-0">
                   {record.job ? (
-                    <Link href={`/jobs/${record.job.id}`} className="text-indigo-400 font-mono break-all">
+                    <Link href={`/jobs/${record.job.id}`} className="text-indigo-600 hover:opacity-80 font-mono break-all">
                       {record.job.id}
                     </Link>
                   ) : (
                     "—"
                   )}
                   {record.job && (
-                    <span className="text-gray-600 ml-2">{statusBadge(record.job.status)}</span>
+                    <span className="text-muted-2 ml-2">{statusBadge(record.job.status)}</span>
                   )}
                   {record.job?.startedAt && (
-                    <div className="text-gray-600 mt-1">Started {formatDate(record.job.startedAt)}</div>
+                    <div className="text-muted-2 mt-1">Started {formatDate(record.job.startedAt)}</div>
                   )}
                 </dd>
               </div>
             </dl>
 
             {record.processingError && (
-              <div className="mt-4 p-3 bg-red-900/20 border border-red-800 rounded text-xs text-red-300">
-                <div className="text-red-500 uppercase mb-1 font-semibold">Parse / processing error</div>
+              <div className="mt-4 p-3 rounded text-xs border border-[color:var(--badge-red-border)] bg-[color:var(--badge-red-bg)] text-[color:var(--badge-red-fg)]">
+                <div className="uppercase mb-1 font-semibold">Parse / processing error</div>
                 {record.processingError}
               </div>
             )}
@@ -124,11 +124,11 @@ export default async function RawRecordDetailPage({ params }: Props) {
           )}
 
           <div>
-            <p className="text-[11px] text-gray-600 mb-2">
+            <p className="text-[11px] text-muted-2 mb-2">
               Confidence scores live on normalized entities. Open a linked row below to inspect scoring.
             </p>
             <EntityLinksBlock
-              links={record.entityLinks.map((l: RawDetail["entityLinks"][number]) => ({
+              links={(record.entityLinks ?? []).map((l: RawDetail["entityLinks"][number]) => ({
                 id: l.id,
                 entityType: l.entityType,
                 entityId: l.entityId,
@@ -138,10 +138,10 @@ export default async function RawRecordDetailPage({ params }: Props) {
         </div>
 
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2 tracking-wide">
+          <h3 className="text-xs font-semibold text-muted uppercase mb-2 tracking-wide">
             Raw JSON
           </h3>
-          <JsonPayloadViewer data={record.rawPayload} maxCollapsedHeight={480} />
+          <JsonPayloadViewer data={record.rawPayload ?? {}} maxCollapsedHeight={480} />
         </div>
       </div>
     </div>

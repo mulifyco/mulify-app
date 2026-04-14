@@ -1,13 +1,13 @@
 export default function EntityWarningChips({ items }: { items: string[] }) {
   if (!items.length) {
-    return <span className="text-[10px] text-gray-600">—</span>;
+    return <span className="text-[10px] text-muted-2">—</span>;
   }
   return (
     <div className="flex flex-wrap gap-1 max-w-[200px]">
       {items.map((t) => (
         <span
           key={t}
-          className="text-[10px] px-1.5 py-0.5 rounded bg-amber-950/60 text-amber-400/95 border border-amber-900/50"
+          className="text-[10px] px-1.5 py-0.5 rounded bg-[color:var(--badge-yellow-bg)] text-[color:var(--badge-yellow-fg)] border border-[color:var(--badge-yellow-border)]"
         >
           {t}
         </span>

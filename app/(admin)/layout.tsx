@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import Sidebar from "@/components/admin/Sidebar";
+import AdminShell from "@/components/admin/AdminShell";
+import prisma from "@/lib/prisma";
 
 export default async function AdminLayout({
   children,
@@ -10,12 +11,19 @@ export default async function AdminLayout({
   const session = await auth();
   if (!session) redirect("/login");
 
-  return (
-    <div className="flex min-h-screen bg-[#0c0d10] text-gray-100">
-      <Sidebar />
-      <main className="flex-1 min-h-screen overflow-y-auto border-l border-gray-800/80">
-        <div className="mx-auto max-w-7xl px-5 py-6 lg:px-8">{children}</div>
-      </main>
-    </div>
-  );
+  const userId = (session.user as { id?: string }).id;
+  let demoWorkspace = false;
+  if (userId) {
+    const u = await prisma.user
+      .findUnique({ where: { id: userId }, select: { activeWorkspaceId: true } })
+      .catch(() => null);
+    if (u?.activeWorkspaceId) {
+      const w = await prisma.workspace
+        .findUnique({ where: { id: u.activeWorkspaceId }, select: { demoWorkspaceEnabled: true } })
+        .catch(() => null);
+      demoWorkspace = Boolean(w?.demoWorkspaceEnabled);
+    }
+  }
+
+  return <AdminShell demoWorkspace={demoWorkspace}>{children}</AdminShell>;
 }

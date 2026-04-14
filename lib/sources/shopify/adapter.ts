@@ -19,6 +19,8 @@ import { normalizeShopifyDomain } from "@/lib/url";
 import { resolveShopifyConfig, type ShopifyResolvedConfig } from "./config";
 import {
   fetchShopifyCartMeta,
+  fetchShopifyProductPageSignals,
+  fetchShopifyStorefrontHtmlSignals,
   fetchShopifyCollectionsPage,
   resolveShopifyProductsForSyncBatch,
 } from "./public-client";
@@ -164,6 +166,10 @@ export class ShopifyStorefrontSourceAdapter
         () => fetchShopifyCartMeta(fetchHost, mockOpt),
         { label: `shopify-cart.js:${fetchHost}` }
       );
+      const htmlSignals = await withIngestionRetry(
+        () => fetchShopifyStorefrontHtmlSignals(fetchHost, mockOpt),
+        { label: `shopify-html:${fetchHost}` }
+      ).catch(() => null);
       const primaryFromResponse = meta?.permanent_domain
         ? normalizeShopifyDomain(meta.permanent_domain)
         : meta?.shop
@@ -185,6 +191,14 @@ export class ShopifyStorefrontSourceAdapter
         primaryDomainFromResponse: primaryFromResponse,
         domainAliases,
         currency: meta?.currency,
+        _htmlSignals: htmlSignals
+          ? {
+              collectionsFromHtml: htmlSignals.collections.length,
+              productsFromHtml: htmlSignals.products.length,
+              nextDataPresent: htmlSignals.nextDataPresent,
+              jsonLdBlocks: htmlSignals.jsonLdBlocks,
+            }
+          : undefined,
         _fetchedAt: fetchedAt,
       };
       logger.info("shopify.adapter.store_meta", {
@@ -253,17 +267,26 @@ export class ShopifyStorefrontSourceAdapter
       }
 
       let parseFailures = 0;
+      let enrichedThisBatch = 0;
       for (const p of items) {
         if (emitted >= config.maxProductsPerStore) break;
         if (!p?.handle) {
           parseFailures++;
           continue;
         }
+        // Product page enrichment is expensive; keep it capped per batch.
+        const signals =
+          enrichedThisBatch < 2
+            ? await fetchShopifyProductPageSignals(fetchHost, p.handle, mockOpt).catch(() => null)
+            : null;
+        if (signals) enrichedThisBatch++;
         const payload: ShopifyIntelligenceRaw = {
           ...p,
           _ingestionKind: "PRODUCT",
           _storeDomain: canonicalDomain,
           _fetchedAt: fetchedAt,
+          _offerSignals: signals?.offerSignals,
+          _htmlSignals: signals?.htmlSignals,
         };
         records.push({
           externalId: `${canonicalDomain}__${p.handle}`,

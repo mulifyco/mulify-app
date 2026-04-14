@@ -11,6 +11,7 @@ import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { persistRawPayload } from "@/lib/sources/persistence/raw-record";
 import { applyMappingResult } from "@/lib/sources/persistence/apply-mapping";
+import { applyReliabilityAfterIngestionSafe } from "@/server/services/source-reliability.service";
 
 async function writeSyncLog(
   sourceId: string,
@@ -94,6 +95,7 @@ export async function runPersistedSourceSync<TConfig, TRaw>(params: {
     sourceType: expectedSourceType,
     sourceConfigJson: source.config,
     sourceName: source.name,
+    sourcePageUrl: source.pageUrl,
   };
 
   let resolvedConfig: TConfig;
@@ -115,7 +117,15 @@ export async function runPersistedSourceSync<TConfig, TRaw>(params: {
     });
     await writeSyncLog(sourceId, jobId, "error", `Config validation failed: ${fatalError}`);
     resultBuilder.setFatalError(fatalError);
-    return resultBuilder.build(ctx, "FAILED", new Date());
+    const failedEarly = resultBuilder.build(ctx, "FAILED", new Date());
+    await applyReliabilityAfterIngestionSafe({
+      sourceId,
+      jobStatus: "FAILED",
+      totalFetched: failedEarly.totalFetched,
+      totalNormalized: failedEarly.totalNormalized,
+      totalStored: failedEarly.totalStored,
+    });
+    return failedEarly;
   }
 
   await writeSyncLog(sourceId, jobId, "info", "Job started", { runId });
@@ -155,6 +165,10 @@ export async function runPersistedSourceSync<TConfig, TRaw>(params: {
 
       batch.setFetched(fetchResult.records.length);
 
+      if (fetchResult.transportMetadata && Object.keys(fetchResult.transportMetadata).length > 0) {
+        await writeSyncLog(sourceId, jobId, "info", "Batch transport", fetchResult.transportMetadata);
+      }
+
       for (const record of fetchResult.records) {
         let persistedNew = false;
         try {
@@ -167,6 +181,18 @@ export async function runPersistedSourceSync<TConfig, TRaw>(params: {
             payload: record.payload,
           });
           persistedNew = stored.isNew;
+
+          if (stored.skipNormalization) {
+            batch.recordOutcome({
+              externalId: record.externalId,
+              entityType: record.entityType,
+              isNew: persistedNew,
+              normalized: false,
+              recoverable: false,
+              duplicateSuppressed: true,
+            });
+            continue;
+          }
 
           const norm = adapter.normalize(ctx, record, stored.id);
           if (!norm.ok) {
@@ -303,6 +329,14 @@ export async function runPersistedSourceSync<TConfig, TRaw>(params: {
     totalFetched: summary.totalFetched,
     totalNormalized: summary.totalNormalized,
     totalFailed: summary.totalFailed,
+  });
+
+  await applyReliabilityAfterIngestionSafe({
+    sourceId,
+    jobStatus: status,
+    totalFetched: summary.totalFetched,
+    totalNormalized: summary.totalNormalized,
+    totalStored: summary.totalStored,
   });
 
   return summary;

@@ -1,12 +1,32 @@
 // Mulify Library — Phase 1 Core Types
 // All domain types and interfaces
 
-export type SourceType = "META_ADS" | "SHOPIFY_STOREFRONT" | "MANUAL";
+// Keep SourceType aligned with Prisma `SourceType` enum.
+export type SourceType =
+  | "META_ADS"
+  | "SHOPIFY_STOREFRONT"
+  | "MANUAL"
+  | "KEYWORD"
+  | "META_PAGE"
+  | "SHOPIFY_DOMAIN"
+  | "TIKTOK_PAGE"
+  | "CATEGORY";
 export type SourceStatus = "ACTIVE" | "PAUSED" | "ERROR" | "PENDING";
 export type JobStatus = "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "PARTIAL";
 export type RecordStatus = "RAW" | "PROCESSING" | "NORMALIZED" | "FAILED" | "SKIPPED";
 export type EntityType = "AD" | "STORE" | "PRODUCT" | "COLLECTION" | "LANDING_PAGE" | "ADVERTISER";
-export type Platform = "FACEBOOK" | "INSTAGRAM" | "AUDIENCE_NETWORK" | "MESSENGER" | "UNKNOWN";
+// Keep Platform aligned with Prisma `Platform` enum.
+export type Platform =
+  | "FACEBOOK"
+  | "INSTAGRAM"
+  | "AUDIENCE_NETWORK"
+  | "MESSENGER"
+  | "META"
+  | "SHOPIFY"
+  | "TIKTOK"
+  | "UNKNOWN";
+
+export type CreativeType = "IMAGE" | "VIDEO" | "CAROUSEL" | "TEXT" | "UNKNOWN";
 export type ConfidenceLevel = "HIGH" | "MEDIUM" | "LOW";
 export type LogLevel = "info" | "warn" | "error" | "debug";
 
@@ -374,6 +394,34 @@ export interface DashboardStats {
   rawRecordsNormalized: number;
   entitiesLowConfidence: number;
   confidenceAds: ConfidenceDistribution;
+  /** Local dashboard tables (Shop/Ad) */
+  totalShops?: number;
+  avgTrendScore?: number;
+  /** Live freshness signals (best-effort) */
+  newStores24h?: number;
+  newProducts24h?: number;
+  newCollections24h?: number;
+  storefrontsEnriched24h?: number;
+  newCreatives24h?: number;
+  newProductClusters24h?: number;
+  freshSources6h?: number;
+  recycledDomains24h?: number;
+  creativeBursts24h?: number;
+  repeatedHooks24h?: number;
+  topWinningHooks24h?: Array<{
+    canonicalHook: string;
+    angleType: string;
+    mentions: number;
+    storeCount: number;
+    platformMentions: Record<string, number>;
+  }>;
+  fastestRisingAngle24h?: string;
+  crossoverWinnerHooks24h?: Array<{ canonicalHook: string; mentions: number }>;
+  lastWorkerTickAt?: Date;
+  lastSuccessfulRefreshAt?: Date;
+  freshSources1h?: number;
+  staleSources24h?: number;
+  boardsRefreshed24h?: number;
   lastSyncAt?: Date;
   recentJobs: JobSummary[];
 }

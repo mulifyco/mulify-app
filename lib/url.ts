@@ -21,8 +21,28 @@ export function normalizeUrl(rawUrl: string): string | null {
 
     // Strip tracking params
     const trackingParams = [
-      "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
-      "fbclid", "gclid", "mc_cid", "mc_eid", "ref", "_ga", "s_cid",
+      "utm_source",
+      "utm_medium",
+      "utm_campaign",
+      "utm_term",
+      "utm_content",
+      "utm_id",
+      "fbclid",
+      "gclid",
+      "gbraid",
+      "wbraid",
+      "twclid",
+      "ttclid",
+      "mc_cid",
+      "mc_eid",
+      "ref",
+      "_ga",
+      "s_cid",
+      "cmpid",
+      "irclickid",
+      "clickid",
+      "msclkid",
+      "dclid",
     ];
     trackingParams.forEach((p) => url.searchParams.delete(p));
 

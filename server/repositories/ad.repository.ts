@@ -44,6 +44,7 @@ export const AdRepository = {
         confidenceScores: true,
         entityLinks: { include: { rawRecord: true, store: { select: { id: true, domain: true } } } },
         landingPages: { take: 20, orderBy: { firstSeenAt: "desc" } },
+        creativeClusterMember: { include: { cluster: true } },
       },
     });
   },
@@ -142,6 +143,7 @@ export const AdRepository = {
             take: 2,
             include: { store: { select: { id: true, domain: true } } },
           },
+          creativeClusterMember: { include: { cluster: true } },
         },
         orderBy: { [orderBy]: order },
         skip,

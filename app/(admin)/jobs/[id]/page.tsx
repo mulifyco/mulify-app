@@ -32,7 +32,7 @@ export default async function JobDetailPage({ params }: Props) {
       <div>
         <PageHeader title="Job" description={id} />
         <QueryErrorState message={e instanceof Error ? e.message : "Failed to load job."} />
-        <Link href="/jobs" className="text-sm text-indigo-400 mt-4 inline-block">
+        <Link href="/jobs" className="text-sm text-indigo-600 hover:opacity-80 mt-4 inline-block">
           ← Back to jobs
         </Link>
       </div>
@@ -54,31 +54,31 @@ export default async function JobDetailPage({ params }: Props) {
               type="button"
               disabled
               title="Retry / rerun will be wired to the job runner in a later iteration"
-              className="text-xs px-3 py-1.5 rounded border border-gray-700 text-gray-500 cursor-not-allowed"
+              className="text-xs px-3 py-1.5 rounded border border-border text-muted-2 cursor-not-allowed"
             >
               Rerun (soon)
             </button>
-            <Link href="/jobs" className="text-sm text-gray-400 hover:text-gray-200">
+            <Link href="/jobs" className="text-sm text-muted hover:opacity-80">
               ← Back to jobs
             </Link>
           </div>
         }
       />
 
-      <div className="rounded-lg border border-gray-800 bg-gray-900/30 p-4 mb-6">
-        <div className="text-[11px] font-semibold text-gray-500 uppercase mb-3">Execution timeline</div>
+      <div className="rounded-lg border border-border bg-card p-4 mb-6 shadow-sm">
+        <div className="text-[11px] font-semibold text-muted uppercase mb-3">Execution timeline</div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
           <div>
-            <div className="text-xs text-gray-600">Created</div>
-            <div className="text-gray-300">{formatDate(job.createdAt)}</div>
+            <div className="text-xs text-muted-2">Created</div>
+            <div className="text-foreground">{formatDate(job.createdAt)}</div>
           </div>
           <div>
-            <div className="text-xs text-gray-600">Started</div>
-            <div className="text-gray-300">{job.startedAt ? formatDate(job.startedAt) : "—"}</div>
+            <div className="text-xs text-muted-2">Started</div>
+            <div className="text-foreground">{job.startedAt ? formatDate(job.startedAt) : "—"}</div>
           </div>
           <div>
-            <div className="text-xs text-gray-600">Completed</div>
-            <div className="text-gray-300">{job.completedAt ? formatDate(job.completedAt) : "—"}</div>
+            <div className="text-xs text-muted-2">Completed</div>
+            <div className="text-foreground">{job.completedAt ? formatDate(job.completedAt) : "—"}</div>
           </div>
         </div>
       </div>
@@ -96,19 +96,19 @@ export default async function JobDetailPage({ params }: Props) {
           { label: "Failed (records)", value: job.totalFailed },
           { label: "Batches (metadata)", value: batches ?? "—" },
         ].map((item) => (
-          <div key={item.label} className="rounded-lg border border-gray-800 bg-gray-900/40 p-3">
-            <div className="text-[11px] text-gray-500 uppercase mb-1">{item.label}</div>
-            <div className="text-sm text-white font-medium tabular-nums break-all">{item.value}</div>
+          <div key={item.label} className="rounded-lg border border-border bg-card p-3 shadow-sm">
+            <div className="text-[11px] text-muted uppercase mb-1">{item.label}</div>
+            <div className="text-sm text-foreground font-medium tabular-nums break-all">{item.value}</div>
           </div>
         ))}
       </div>
 
       {job.error && (
-        <div className="bg-red-900/20 border border-red-800 rounded-lg p-4 mb-6">
-          <div className="text-xs text-red-400 uppercase mb-2 font-semibold">Fatal / job error</div>
-          <div className="text-sm text-red-300 whitespace-pre-wrap">{job.error}</div>
+        <div className="rounded-lg p-4 mb-6 border border-[color:var(--badge-red-border)] bg-[color:var(--badge-red-bg)] text-[color:var(--badge-red-fg)] shadow-sm">
+          <div className="text-xs uppercase mb-2 font-semibold">Fatal / job error</div>
+          <div className="text-sm whitespace-pre-wrap">{job.error}</div>
           {job.errorStack && (
-            <pre className="mt-3 text-xs text-red-500/70 overflow-auto max-h-48 border-t border-red-900/40 pt-3">
+            <pre className="mt-3 text-xs overflow-auto max-h-48 border-t border-[color:var(--badge-red-border)]/60 pt-3">
               {job.errorStack}
             </pre>
           )}
@@ -116,11 +116,11 @@ export default async function JobDetailPage({ params }: Props) {
       )}
 
       {warnings.length > 0 && (
-        <div className="rounded-lg border border-amber-900/40 bg-amber-950/10 p-4 mb-6">
-          <div className="text-xs font-semibold text-amber-400 uppercase mb-2">
+        <div className="rounded-lg border border-[color:var(--badge-yellow-border)] bg-[color:var(--badge-yellow-bg)] p-4 mb-6 shadow-sm">
+          <div className="text-xs font-semibold text-[color:var(--badge-yellow-fg)] uppercase mb-2">
             Warnings ({warnings.length})
           </div>
-          <ul className="text-xs text-amber-100/80 space-y-1.5 list-decimal list-inside max-h-56 overflow-y-auto">
+          <ul className="text-xs text-[color:var(--badge-yellow-fg)]/90 space-y-1.5 list-decimal list-inside max-h-56 overflow-y-auto">
             {warnings.map((w, i) => (
               <li key={`${i}-${w.slice(0, 40)}`}>{w}</li>
             ))}
@@ -130,7 +130,7 @@ export default async function JobDetailPage({ params }: Props) {
 
       {job.metadata != null && (
         <div className="mb-6">
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+          <h2 className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
             Job metadata (JSON)
           </h2>
           <JsonPayloadViewer data={job.metadata} maxCollapsedHeight={240} />
@@ -139,45 +139,45 @@ export default async function JobDetailPage({ params }: Props) {
 
       <div className="mb-6">
         <div className="flex items-center justify-between gap-2 mb-2">
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Related raw records ({job.rawRecords.length} shown)
+          <h2 className="text-xs font-semibold text-muted uppercase tracking-wider">
+            Related raw records ({(job.rawRecords ?? []).length} shown)
           </h2>
           <Link
             href={`/raw-records?search=${encodeURIComponent(job.id)}`}
-            className="text-xs text-indigo-400"
+            className="text-xs text-indigo-600 hover:opacity-80"
           >
             Filter list →
           </Link>
         </div>
-        <div className="rounded-lg border border-gray-800 overflow-x-auto">
+        <div className="rounded-lg border border-border bg-card overflow-x-auto shadow-sm">
           <table className="w-full text-sm min-w-[640px]">
             <thead>
-              <tr className="bg-gray-900/80 border-b border-gray-800 text-left">
-                <th className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">External ID</th>
-                <th className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Entity</th>
-                <th className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Parse</th>
-                <th className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Ingested</th>
+              <tr className="bg-surface-2 border-b border-border text-left">
+                <th className="px-3 py-2 text-[11px] font-semibold text-muted uppercase">External ID</th>
+                <th className="px-3 py-2 text-[11px] font-semibold text-muted uppercase">Entity</th>
+                <th className="px-3 py-2 text-[11px] font-semibold text-muted uppercase">Parse</th>
+                <th className="px-3 py-2 text-[11px] font-semibold text-muted uppercase">Ingested</th>
                 <th className="px-3 py-2 w-10" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800/60">
-              {job.rawRecords.length === 0 ? (
+            <tbody className="divide-y divide-border">
+              {(job.rawRecords ?? []).length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-3 py-6 text-center text-gray-600 text-xs">
+                  <td colSpan={5} className="px-3 py-6 text-center text-muted-2 text-xs">
                     No raw rows linked to this job id.
                   </td>
                 </tr>
               ) : (
-                job.rawRecords.map((r: JobDetail["rawRecords"][number]) => (
-                  <tr key={r.id} className="hover:bg-gray-900/40">
-                    <td className="px-3 py-2 font-mono text-xs text-gray-400 truncate max-w-[200px]">
+                (job.rawRecords ?? []).map((r: JobDetail["rawRecords"][number]) => (
+                  <tr key={r.id} className="hover:bg-surface-2/70">
+                    <td className="px-3 py-2 font-mono text-xs text-muted truncate max-w-[200px]">
                       {r.externalId}
                     </td>
-                    <td className="px-3 py-2 text-xs text-gray-500">{r.entityType}</td>
+                    <td className="px-3 py-2 text-xs text-muted">{r.entityType}</td>
                     <td className="px-3 py-2">{statusBadge(r.status)}</td>
-                    <td className="px-3 py-2 text-xs text-gray-500">{formatDate(r.firstSeenAt)}</td>
+                    <td className="px-3 py-2 text-xs text-muted">{formatDate(r.firstSeenAt)}</td>
                     <td className="px-3 py-2">
-                      <Link href={`/raw-records/${r.id}`} className="text-xs text-indigo-400">
+                      <Link href={`/raw-records/${r.id}`} className="text-xs text-indigo-600 hover:opacity-80">
                         Open
                       </Link>
                     </td>
@@ -190,26 +190,26 @@ export default async function JobDetailPage({ params }: Props) {
       </div>
 
       <div>
-        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-          Sync logs ({job.syncLogs.length} recent)
+        <h2 className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+          Sync logs ({(job.syncLogs ?? []).length} recent)
         </h2>
-        <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+        <div className="bg-card border border-border rounded-lg overflow-hidden shadow-sm">
           <div className="max-h-96 overflow-y-auto">
-            {job.syncLogs.length === 0 ? (
-              <div className="px-4 py-6 text-center text-gray-600 text-sm">No logs</div>
+            {(job.syncLogs ?? []).length === 0 ? (
+              <div className="px-4 py-6 text-center text-muted-2 text-sm">No logs</div>
             ) : (
-              job.syncLogs.map((log) => (
+              (job.syncLogs ?? []).map((log) => (
                 <div
                   key={log.id}
-                  className={`px-4 py-2 border-b border-gray-800/50 text-xs font-mono flex gap-3 ${
+                  className={`px-4 py-2 border-b border-border text-xs font-mono flex gap-3 ${
                     log.level === "error"
-                      ? "text-red-400"
+                      ? "text-red-600"
                       : log.level === "warn"
-                        ? "text-yellow-400"
-                        : "text-gray-400"
+                        ? "text-amber-600"
+                        : "text-muted"
                   }`}
                 >
-                  <span className="text-gray-700 flex-none">
+                  <span className="text-muted-2 flex-none">
                     {new Date(log.createdAt).toISOString().slice(11, 23)}
                   </span>
                   <span className="flex-none uppercase text-xs w-10">[{log.level}]</span>

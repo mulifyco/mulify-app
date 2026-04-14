@@ -109,7 +109,7 @@ export class BatchBuilder {
 
     if (outcome.normalized) {
       this.normalized++;
-    } else {
+    } else if (!outcome.duplicateSuppressed) {
       this.failed++;
     }
 

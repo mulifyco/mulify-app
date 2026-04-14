@@ -10,6 +10,8 @@ import type { EntityType } from "@/types";
 import { IntelligenceContextRepository } from "@/server/repositories/intelligence-context.repository";
 import IntelligenceContextPanel from "@/components/internal/IntelligenceContextPanel";
 import EntityWarningChips from "@/components/internal/EntityWarningChips";
+import OfferAnalyzerDrawer from "@/components/internal/OfferAnalyzerDrawer";
+import PersonaAnalyzerDrawer from "@/components/internal/PersonaAnalyzerDrawer";
 
 export const dynamic = "force-dynamic";
 
@@ -38,12 +40,14 @@ export default async function LandingPageDetailPage({ params }: Props) {
   type LPDetail = typeof lp;
 
   const score = lp.confidenceScores[0];
-  const graphCounts = countByEntityType(lp.entityLinks);
+  const links = lp.entityLinks ?? [];
+  const ads = lp.ads ?? [];
+  const graphCounts = countByEntityType(links);
   const orphanHints: string[] = [];
-  if (lp.ads.length === 0) orphanHints.push("No linked ads");
+  if (ads.length === 0) orphanHints.push("No linked ads");
   const hasStoreLineage =
-    lp.entityLinks.some((l) => l.entityType === "STORE") ||
-    intel.inferredOutgoing.some((x) => x.toEntityType === "STORE");
+    links.some((l) => l.entityType === "STORE") ||
+    (intel.inferredOutgoing ?? []).some((x) => x.toEntityType === "STORE");
   if (!hasStoreLineage) orphanHints.push("No store lineage");
 
   return (
@@ -57,11 +61,13 @@ export default async function LandingPageDetailPage({ params }: Props) {
               href={lp.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 rounded text-gray-300"
+              className="px-3 py-1.5 text-xs bg-card hover:bg-surface-2 rounded text-foreground border border-border shadow-sm"
             >
               Open URL ↗
             </a>
-            <Link href="/landing-pages" className="text-sm text-gray-400 hover:text-gray-200">
+            <OfferAnalyzerDrawer entityType="LANDING_PAGE" entityId={lp.id} triggerLabel="Offer Analyzer" title={`Offer audit · ${lp.domain}`} />
+            <PersonaAnalyzerDrawer entityType="LANDING_PAGE" entityId={lp.id} triggerLabel="Audience" title={`Audience · ${lp.domain}`} />
+            <Link href="/landing-pages" className="text-sm text-muted hover:opacity-80">
               ← Back
             </Link>
           </div>
@@ -76,36 +82,36 @@ export default async function LandingPageDetailPage({ params }: Props) {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div className="lg:col-span-2 rounded-lg border border-gray-800 bg-gray-900/50 p-4">
-          <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3 tracking-wide">
+        <div className="lg:col-span-2 rounded-lg border border-border bg-card p-4 shadow-sm">
+          <h3 className="text-xs font-semibold text-muted uppercase mb-3 tracking-wide">
             Summary
           </h3>
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             {[
               ["Domain", lp.domain],
-              ["Linked ads", lp.ads.length.toLocaleString()],
-              ["Entity links", lp.entityLinks.length.toLocaleString()],
+              ["Linked ads", ads.length.toLocaleString()],
+              ["Entity links", links.length.toLocaleString()],
               ["First seen", timeAgo(lp.firstSeenAt)],
               ["Last seen", timeAgo(lp.lastSeenAt)],
             ].map(([label, value]) => (
               <div key={String(label)} className="contents">
-                <dt className="text-xs text-gray-600">{label}</dt>
-                <dd className="text-gray-300">{value}</dd>
+                <dt className="text-xs text-muted-2">{label}</dt>
+                <dd className="text-foreground">{value}</dd>
               </div>
             ))}
           </dl>
         </div>
 
-        <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-4">
-          <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3 tracking-wide">
+        <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+          <h3 className="text-xs font-semibold text-muted uppercase mb-3 tracking-wide">
             Confidence
           </h3>
           <ConfidenceInline score={score ?? null} />
           {score && (
-            <div className="mt-4 text-[11px] text-gray-600 space-y-1 tabular-nums">
+            <div className="mt-4 text-[11px] text-muted-2 space-y-1 tabular-nums">
               <div>URL validity {(score.urlValidityScore * 100).toFixed(0)}%</div>
               <div>Linkage {(score.linkageScore * 100).toFixed(0)}%</div>
-              <div className="text-gray-500 pt-1">Updated {formatDate(score.lastScoredAt)}</div>
+              <div className="text-muted pt-1">Updated {formatDate(score.lastScoredAt)}</div>
             </div>
           )}
         </div>
@@ -121,18 +127,18 @@ export default async function LandingPageDetailPage({ params }: Props) {
         reasonCodes={score?.reasonCodes ?? undefined}
       />
 
-      <div className="rounded-lg border border-gray-800 bg-gray-900/40 p-4 mb-6">
-        <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3 tracking-wide">
+      <div className="rounded-lg border border-border bg-card p-4 mb-6 shadow-sm">
+        <h3 className="text-xs font-semibold text-muted uppercase mb-3 tracking-wide">
           Entity graph (from links)
         </h3>
         <div className="flex flex-wrap gap-2">
           {Object.entries(graphCounts).length === 0 ? (
-            <span className="text-xs text-gray-600">No normalized links yet.</span>
+            <span className="text-xs text-muted-2">No normalized links yet.</span>
           ) : (
             Object.entries(graphCounts).map(([type, n]) => (
               <span
                 key={type}
-                className="text-xs px-2 py-1 rounded bg-gray-800 text-gray-300 tabular-nums"
+                className="text-xs px-2 py-1 rounded bg-surface-2 text-foreground tabular-nums border border-border"
               >
                 {type}: {n}
               </span>
@@ -143,39 +149,39 @@ export default async function LandingPageDetailPage({ params }: Props) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          <h2 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">
             Linked ads
           </h2>
-          <div className="rounded-lg border border-gray-800 overflow-hidden">
+          <div className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-900/80 border-b border-gray-800 text-left">
-                  <th className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">
+                <tr className="bg-surface-2 border-b border-border text-left">
+                  <th className="px-3 py-2 text-[11px] font-semibold text-muted uppercase">
                     Page / creative
                   </th>
-                  <th className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase w-16" />
+                  <th className="px-3 py-2 text-[11px] font-semibold text-muted uppercase w-16" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800/60">
-                {lp.ads.length === 0 ? (
+              <tbody className="divide-y divide-border">
+                {ads.length === 0 ? (
                   <tr>
-                    <td colSpan={2} className="px-3 py-6 text-center text-gray-600 text-xs">
+                    <td colSpan={2} className="px-3 py-6 text-center text-muted-2 text-xs">
                       No ads reference this URL.
                     </td>
                   </tr>
                 ) : (
-                  lp.ads.map((ad: LPDetail["ads"][number]) => (
-                    <tr key={ad.id} className="hover:bg-gray-900/40">
+                  ads.map((ad: LPDetail["ads"][number]) => (
+                    <tr key={ad.id} className="hover:bg-surface-2/70">
                       <td className="px-3 py-2">
-                        <div className="text-gray-200 truncate max-w-md">
+                        <div className="text-foreground truncate max-w-md">
                           {ad.pageName ?? ad.externalId}
                         </div>
-                        <div className="text-[11px] text-gray-600 font-mono truncate">
+                        <div className="text-[11px] text-muted-2 font-mono truncate">
                           {ad.canonicalUrl ?? ad.externalId}
                         </div>
                       </td>
                       <td className="px-3 py-2">
-                        <Link href={`/ads/${ad.id}`} className="text-xs text-indigo-400">
+                        <Link href={`/ads/${ad.id}`} className="text-xs text-indigo-600 hover:opacity-80">
                           Open
                         </Link>
                       </td>
@@ -189,7 +195,7 @@ export default async function LandingPageDetailPage({ params }: Props) {
 
         <div className="space-y-4">
           <EntityLinksBlock
-            links={lp.entityLinks.map((l: LPDetail["entityLinks"][number]) => ({
+            links={links.map((l: LPDetail["entityLinks"][number]) => ({
               id: l.id,
               entityType: l.entityType,
               entityId: l.entityId,
@@ -198,7 +204,7 @@ export default async function LandingPageDetailPage({ params }: Props) {
           />
           {score?.breakdown != null && (
             <div>
-              <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2 tracking-wide">
+              <h3 className="text-xs font-semibold text-muted uppercase mb-2 tracking-wide">
                 Score breakdown
               </h3>
               <JsonPayloadViewer data={score.breakdown} maxCollapsedHeight={220} />

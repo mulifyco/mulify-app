@@ -13,6 +13,7 @@ import type {
 } from "@/lib/sources/shared/types";
 import { normalizeUrl, isValidUrl } from "@/lib/url";
 import { parseDate } from "@/lib/date";
+import { createHash } from "crypto";
 
 const TRACKED_FIELDS: (keyof MetaAdRawPayload)[] = [
   "id",
@@ -27,6 +28,94 @@ const TRACKED_FIELDS: (keyof MetaAdRawPayload)[] = [
 export type MapMetaAdResult =
   | { ok: true; result: MappingResult }
   | { ok: false; failure: MappingFailure };
+
+function extractUrlsFromText(s: string | undefined | null): string[] {
+  if (!s?.trim()) return [];
+  const re = /https?:\/\/[^\s"'<>]+/gi;
+  const out: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(s)) !== null) {
+    out.push(m[0]!.replace(/[),.;]+$/, ""));
+  }
+  return out;
+}
+
+function pickString(v: unknown): string | null {
+  return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+
+function extractMetaDestinationCandidates(raw: MetaAdRawPayload): string[] {
+  const out: string[] = [];
+  const r = raw as unknown as Record<string, unknown>;
+
+  // Common destination-like keys seen in downstream rehydrates / enriched archives.
+  const keys = [
+    "destination_url",
+    "destinationUrl",
+    "link_url",
+    "linkUrl",
+    "outbound_link",
+    "outboundLink",
+    "cta_link",
+    "ctaLink",
+    "website_url",
+    "websiteUrl",
+    "final_url",
+    "finalUrl",
+    "landing_page",
+    "landingPage",
+  ] as const;
+
+  for (const k of keys) {
+    const v = r[k];
+    if (typeof v === "string") out.push(v);
+    else if (Array.isArray(v)) {
+      for (const x of v) if (typeof x === "string") out.push(x);
+    } else if (v && typeof v === "object") {
+      const asRec = v as Record<string, unknown>;
+      const s = pickString(asRec.url) ?? pickString(asRec.href) ?? pickString(asRec.link);
+      if (s) out.push(s);
+    }
+  }
+
+  // Some payloads embed URLs inside nested objects (e.g. CTA structs).
+  const cta = r.call_to_action ?? r.callToAction ?? null;
+  if (cta && typeof cta === "object" && !Array.isArray(cta)) {
+    const s = pickString((cta as Record<string, unknown>).link) ?? pickString((cta as Record<string, unknown>).url);
+    if (s) out.push(s);
+  }
+
+  // Text fallbacks (often includes the only visible destination).
+  out.push(...extractUrlsFromText(extractAdText(raw.ad_creative_link_titles)));
+  out.push(...extractUrlsFromText(extractAdText(raw.ad_creative_bodies)));
+  out.push(...extractUrlsFromText(extractAdText(raw.ad_creative_link_descriptions)));
+
+  // Dedupe + normalize (keep order).
+  const seen = new Set<string>();
+  const filtered: string[] = [];
+  for (const u of out) {
+    const n = normalizeUrl(u);
+    if (!n) continue;
+    if (!isValidUrl(n)) continue;
+    if (seen.has(n)) continue;
+    seen.add(n);
+    filtered.push(n);
+  }
+  return filtered.slice(0, 8);
+}
+
+function hash12(input: string): string {
+  return createHash("sha256").update(input).digest("hex").slice(0, 12);
+}
+
+function hostOf(url: string | undefined): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
 
 export function mapMetaAd(raw: MetaAdRawPayload, rawRecordId: string): MapMetaAdResult {
   if (!raw.id) {
@@ -93,6 +182,28 @@ export function mapMetaAd(raw: MetaAdRawPayload, rawRecordId: string): MapMetaAd
     warnings.push(`Ad ${raw.id}: ad_snapshot_url could not be normalized`);
   }
 
+  const destinationCandidates = extractMetaDestinationCandidates(raw);
+  const destinationUrl = destinationCandidates[0] ?? undefined;
+  const destinationHosts = destinationCandidates
+    .map((u) => hostOf(u))
+    .filter((h): h is string => Boolean(h));
+
+  const titleVariants = (raw.ad_creative_link_titles ?? []).map((s) => s.trim()).filter(Boolean).slice(0, 8);
+  const bodyVariants = (raw.ad_creative_bodies ?? []).map((s) => s.trim()).filter(Boolean).slice(0, 8);
+  const captionVariants = (raw.ad_creative_link_captions ?? []).map((s) => s.trim()).filter(Boolean).slice(0, 8);
+  const descVariants = (raw.ad_creative_link_descriptions ?? []).map((s) => s.trim()).filter(Boolean).slice(0, 8);
+
+  const variationCount =
+    new Set([...titleVariants, ...bodyVariants, ...captionVariants, ...descVariants].map((s) => s.toLowerCase())).size;
+
+  const familyKeyParts = [
+    raw.page_id ?? "",
+    (destinationHosts[0] ?? "").toLowerCase(),
+    // snapshot host is stable-ish for media family bucketing
+    (hostOf(snapshotUrl) ?? "").toLowerCase(),
+  ];
+  const creativeFamilyFingerprint = familyKeyParts.some(Boolean) ? `meta_fam_v1:${hash12(familyKeyParts.join("|"))}` : null;
+
   const hasValidUrls = snapshotUrl ? isValidUrl(snapshotUrl) : false;
 
   const ad: AdUpsertInput = {
@@ -104,6 +215,7 @@ export function mapMetaAd(raw: MetaAdRawPayload, rawRecordId: string): MapMetaAd
     adTitle,
     adBody,
     canonicalUrl: snapshotUrl,
+    destinationUrl,
     platforms,
     countries,
     startDate,
@@ -115,8 +227,27 @@ export function mapMetaAd(raw: MetaAdRawPayload, rawRecordId: string): MapMetaAd
     spendMax,
     currency: raw.currency,
     metadata: buildMetadata(raw, {
-      destinationUrlStatus:
-        "UNCERTAIN: Ad Library typically does not expose final landing URLs; political datasets may differ.",
+      destinationUrlStatus: destinationUrl
+        ? "Best-effort: destination URL extracted from payload/text (may be redirect/shortener)."
+        : "UNCERTAIN: Ad Library typically does not expose final landing URLs; political datasets may differ.",
+      destinationUrlCandidates: destinationCandidates,
+      creativeDepth: {
+        headlineVariants: titleVariants,
+        bodyTextVariants: bodyVariants,
+        captionVariants,
+        descriptionVariants: descVariants,
+        variationCount,
+        destinationHosts: [...new Set(destinationHosts)].slice(0, 6),
+        // "family" groups page+dest+media-ish; used for lineage/variation heuristics.
+        creativeFamilyFingerprint,
+        lineageScore: Math.min(
+          1,
+          0.35 +
+            Math.min(0.35, variationCount * 0.04) +
+            Math.min(0.25, destinationHosts.length * 0.05) +
+            (snapshotUrl ? 0.08 : 0)
+        ),
+      },
       languages: raw.languages ?? [],
       bylines: raw.bylines,
       uncertainFields,

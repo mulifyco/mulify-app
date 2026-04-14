@@ -18,6 +18,11 @@ enum SourceType {
   META_ADS
   SHOPIFY_STOREFRONT
   MANUAL
+  KEYWORD
+  META_PAGE
+  SHOPIFY_DOMAIN
+  TIKTOK_PAGE
+  CATEGORY
 }
 
 enum SourceStatus {
@@ -57,6 +62,24 @@ enum Platform {
   INSTAGRAM
   AUDIENCE_NETWORK
   MESSENGER
+  /// Generic platforms used by local dashboard seed / simple data model.
+  META
+  SHOPIFY
+  TIKTOK
+  UNKNOWN
+}
+
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum CreativeType {
+  IMAGE
+  VIDEO
+  CAROUSEL
+  TEXT
   UNKNOWN
 }
 
@@ -80,6 +103,48 @@ enum SignalSeverity {
   HIGH
 }
 
+enum AlertSeverity {
+  INFO
+  WARNING
+  HIGH
+}
+
+enum WatchlistAlertType {
+  STORE_TREND_SPIKE
+  PRODUCT_CLUSTER_SPIKE
+  CREATIVE_CLUSTER_SPIKE
+  READY_TO_SCALE_APPEARED
+  EARLY_MOVER_APPEARED
+}
+
+enum ReviewQueueItemType {
+  LOW_CONFIDENCE_PRODUCT_CLUSTER
+  LOW_CONFIDENCE_CREATIVE_CLUSTER
+  HIGH_SCORE_UNVERIFIED_ITEM
+  DISCOVERY_CANDIDATE_REVIEW
+  ENTITY_LINK_REVIEW
+  SOURCE_RELIABILITY_ALERT
+}
+
+enum ReviewQueueStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+enum ReportType {
+  BOARD_SNAPSHOT
+  WATCHLIST_SNAPSHOT
+  COMPARE_SNAPSHOT
+  EXECUTIVE_SUMMARY
+}
+
+enum ReportStatus {
+  DRAFT
+  READY
+}
+
 enum TrafficTrend {
   RISING
   STABLE
@@ -100,6 +165,100 @@ enum OpportunityLevel {
   WEAK
 }
 
+enum LeadStage {
+  NEW
+  RESEARCHING
+  CONTACTED
+  FOLLOW_UP
+  WON
+  LOST
+  PARTNER
+  ACQUISITION_TARGET
+}
+
+/// Founder-led outbound / demo pipeline (Mulify GTM), separate from product CRM `Lead`.
+enum GtmStage {
+  PROSPECT
+  CONTACTED
+  DEMO_BOOKED
+  DEMO_DONE
+  TRIAL
+  WON
+  LOST
+  FOLLOW_UP_LATER
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  ANALYST
+  VIEWER
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+enum SourceReliabilityStatus {
+  HEALTHY
+  DEGRADED
+  COOLING_DOWN
+  DISABLED
+}
+
+/// Product / usage analytics (first-party). Retention policy TBD.
+enum ProductEventType {
+  LOGIN_SUCCESS
+  DASHBOARD_VIEW
+  BOARD_VIEW
+  BOARD_ITEM_OPEN
+  COMPARE_RUN
+  REPORT_CREATE
+  REPORT_EXPORT
+  WATCHLIST_CREATE
+  WATCHLIST_ALERT_OPEN
+  LEAD_CREATE
+  REVIEW_ITEM_RESOLVE
+  PAYWALL_HIT
+  BILLING_CHECKOUT_START
+  BILLING_PORTAL_OPEN
+  COPILOT_OPEN
+  BRIEF_OPEN
+  OFFER_ANALYZER_OPEN
+  PERSONA_ANALYZER_OPEN
+  AUTO_ACTION_RUN
+  SOURCE_CREATED
+  LANDING_VIEW
+  CTA_CLICK
+  DEMO_WORKSPACE_ENTER
+  PRICING_CTA_CLICK
+  SIGNUP_START
+  TRIAL_START
+}
+
+/// Customer success retention loops (in-product). Email delivery TBD.
+enum CustomerDigestType {
+  WEEKLY
+}
+
+enum CustomerNudgeStatus {
+  OPEN
+  DISMISSED
+  DONE
+}
+
+/** Saved board filter / future alert rule target */
+enum BoardType {
+  READY_TO_SCALE
+  MARKET_LEADERS
+  EARLY_MOVERS
+  SATURATED_PRODUCTS
+  CREATIVE_WINNERS
+}
+
 // ─────────────────────────────────────────────────────────────
 // SOURCE — Configuration record for each data source connector
 // ─────────────────────────────────────────────────────────────
@@ -109,20 +268,213 @@ model Source {
   name        String
   type        SourceType
   status      SourceStatus @default(PENDING)
+  query       String?
+  pageUrl     String?
+  domain      String?
+  country     String?
+  priority    Int          @default(0)
+  isSeed      Boolean      @default(false)
+  lastSyncedAt  DateTime?
+  lastSuccessAt DateTime?
+  lastErrorAt   DateTime?
   config      Json
   metadata    Json?
   lastSyncAt  DateTime?
   errorCount  Int          @default(0)
   lastError   String?
+
+  reliabilityStatus      SourceReliabilityStatus @default(HEALTHY)
+  consecutiveFailures    Int                     @default(0)
+  consecutiveEmptyRuns   Int                     @default(0)
+  lastHealthyAt          DateTime?
+  cooldownUntil          DateTime?
+  disabledReason         String?
+
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
   ingestionJobs IngestionJob[]
   rawRecords    RawRecord[]
   syncLogs      SyncLog[]
+  watchlistStores WatchlistStore[]
+  leads          Lead[]
 
   @@index([type])
   @@index([status])
+  @@index([reliabilityStatus])
+  @@index([cooldownUntil])
+}
+
+// ─────────────────────────────────────────────────────────────
+// DISCOVERY CANDIDATE — Controlled expansion queue for new sources
+// ─────────────────────────────────────────────────────────────
+
+model DiscoveryCandidate {
+  id          String   @id @default(cuid())
+  /** Normalized hostname (no protocol, no path). */
+  domain      String   @unique
+  /** Best-effort hint: where this came from (KEYWORD / META_PAGE / TIKTOK_PAGE, etc.). */
+  sourceTypeHint String
+  /** 0–100 confidence score for auto-promotion. */
+  discoveryScore Int    @default(0)
+  /** Human-readable summary for manual review. */
+  discoveryReason String
+  discoveredFromSourceId String
+  rawEvidenceCount Int   @default(0)
+  isPromoted   Boolean @default(false)
+  promotedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([domain])
+  @@index([discoveryScore])
+  @@index([isPromoted])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// REVIEW QUEUE — Manual analyst workflow for borderline signals
+// ─────────────────────────────────────────────────────────────
+
+model ReviewQueueItem {
+  id        String            @id @default(cuid())
+  workspaceId String?
+  workspace   Workspace?       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  type      ReviewQueueItemType
+  status    ReviewQueueStatus @default(OPEN)
+  /** 0–100, higher = earlier in queue */
+  priority  Int               @default(50)
+  title     String
+  reason    String
+
+  entityType String?
+  entityId   String?
+  sourceId   String?
+
+  metadata   Json?
+
+  reviewedAt      DateTime?
+  resolutionNote  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([type])
+  @@index([priority])
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@index([sourceId])
+  @@index([workspaceId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// REPORT — Shareable snapshots / exportable intelligence output
+// ─────────────────────────────────────────────────────────────
+
+model Report {
+  id            String       @id @default(cuid())
+  workspaceId   String?
+  workspace     Workspace?   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title         String
+  type          ReportType
+  status        ReportStatus @default(DRAFT)
+  sourceContext Json?
+  summary       Json?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@index([workspaceId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// WATCHLIST — Competitor tracking / compare workspace
+// ─────────────────────────────────────────────────────────────
+
+model Watchlist {
+  id          String   @id @default(cuid())
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  stores WatchlistStore[]
+  runs   WatchlistRun[]
+  alerts WatchlistAlertLog[]
+
+  @@index([updatedAt])
+  @@index([workspaceId, updatedAt])
+}
+
+model WatchlistStore {
+  id          String   @id @default(cuid())
+  watchlistId String
+  watchlist   Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+
+  /** Optional linkage to normalized Store graph (shopify storefront intelligence). */
+  storeId     String?
+  store       Store?    @relation(fields: [storeId], references: [id], onDelete: SetNull)
+
+  /** Optional linkage to a Source row (if this domain exists as SHOPIFY_DOMAIN source). */
+  sourceId    String?
+  source      Source?   @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+
+  /** Normalized hostname (no protocol). */
+  domain      String
+  label       String?
+  createdAt   DateTime @default(now())
+
+  @@unique([watchlistId, domain])
+  @@index([watchlistId])
+  @@index([domain])
+  @@index([storeId])
+  @@index([sourceId])
+}
+
+model WatchlistRun {
+  id                   String   @id @default(cuid())
+  workspaceId           String?
+  workspace             Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  watchlistId           String
+  watchlist             Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+  totalStores           Int
+  totalProductClusters  Int
+  totalCreativeClusters Int
+  avgTrendScore         Float
+  avgSaturation         Float?
+  /** Derived board signals within watchlist scope (best-effort) */
+  readyToScaleCount     Int      @default(0)
+  earlyMoverCount       Int      @default(0)
+  createdAt             DateTime @default(now())
+
+  @@index([watchlistId])
+  @@index([createdAt])
+  @@index([workspaceId, createdAt])
+}
+
+model WatchlistAlertLog {
+  id          String   @id @default(cuid())
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  watchlistId String
+  watchlist   Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+  type        WatchlistAlertType
+  title       String
+  message     String
+  severity    AlertSeverity
+  delta       Json?
+  createdAt   DateTime @default(now())
+
+  @@index([watchlistId])
+  @@index([type])
+  @@index([severity])
+  @@index([createdAt])
+  @@index([workspaceId, createdAt])
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -176,6 +528,9 @@ model RawRecord {
   payloadHash     String
   firstSeenAt     DateTime      @default(now())
   lastSeenAt      DateTime      @default(now())
+  /// Incremented when the same payload is re-ingested without re-normalization (dedupe layer).
+  duplicateIngestCount Int      @default(0)
+  lastDuplicateIngestAt DateTime?
   normalizedAt    DateTime?
   processingError String?
   createdAt       DateTime      @default(now())
@@ -239,11 +594,344 @@ model Store {
   collections      Collection[]
   entityLinks      EntityLink[]
   confidenceScores ConfidenceScore[]
+  watchlistStores  WatchlistStore[]
+  snapshots        StoreSnapshot[]
+  leads            Lead[]
 
   @@index([domain])
   @@index([platform])
   @@index([country])
   @@index([firstSeenAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// LEAD CRM — Outreach / BD / acquisition pipeline
+// ─────────────────────────────────────────────────────────────
+
+model Lead {
+  id                      String    @id @default(cuid())
+  workspaceId             String?
+  workspace               Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  domain                  String    @unique
+  companyName             String?
+  storeId                 String?
+  store                   Store?    @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  sourceId                String?
+  source                  Source?   @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  contactEmail            String?
+  contactFormUrl          String?
+  instagramUrl            String?
+  tiktokUrl               String?
+  estimatedPotentialScore Int       @default(0)
+  leadStage               LeadStage @default(NEW)
+  owner                   String?
+  notes                   String?
+  tags                    String[]  @default([])
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  activities LeadActivity[]
+  gtmLead    GtmLead?
+
+  @@index([leadStage])
+  @@index([estimatedPotentialScore])
+  @@index([workspaceId, createdAt])
+}
+
+model GtmLead {
+  id             String    @id @default(cuid())
+  workspaceId     String?
+  workspace       Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name           String?
+  company        String
+  website        String?
+  email          String?
+  linkedinUrl    String?
+  source         String
+  painPoint      String    @default("")
+  estimatedMRR   Int       @default(0)
+  stage          GtmStage  @default(PROSPECT)
+  priorityScore  Int       @default(50)
+  owner          String?
+  notes          String?
+  lastContactAt  DateTime?
+  nextFollowUpAt DateTime?
+  crmLeadId      String?   @unique
+  crmLead        Lead?     @relation(fields: [crmLeadId], references: [id], onDelete: SetNull)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  activities GtmActivity[]
+
+  @@index([stage])
+  @@index([nextFollowUpAt])
+  @@index([source])
+  @@index([company])
+  @@index([workspaceId, createdAt])
+}
+
+model GtmActivity {
+  id        String   @id @default(cuid())
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  leadId    String
+  lead      GtmLead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type      String
+  note      String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+  @@index([createdAt])
+  @@index([type])
+  @@index([workspaceId, createdAt])
+}
+
+model LeadActivity {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type      String
+  note      String
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// USER — Local credits + plan
+// ─────────────────────────────────────────────────────────────
+
+model User {
+  id        String @id @default(cuid())
+  email     String @unique
+  /// Bcrypt hash for credentials login (local demo). Null for users without password sign-in.
+  passwordHash String?
+  credits   Int    @default(3)
+  plan      Plan   @default(FREE)
+  /// Billing plan used by access tiers (FREE/PRO/TEAM)
+  billingPlan           String   @default("FREE")
+  stripeCustomerId      String?
+  stripeSubscriptionId  String?
+  subscriptionStatus    String?
+  currentPeriodEnd      DateTime?
+  cancelAtPeriodEnd     Boolean  @default(false)
+  activeWorkspaceId     String?
+  activeWorkspace       Workspace? @relation("ActiveWorkspace", fields: [activeWorkspaceId], references: [id], onDelete: SetNull)
+  /// One-time launch kit: sample watchlist, leads, demo report (see `seedLaunchDemoForUser`).
+  launchDemoSeededAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creditLogs CreditLog[]
+  workspaces WorkspaceMember[]
+  ownedWorkspaces Workspace[] @relation("WorkspaceOwner")
+  productEvents ProductEvent[]
+  customerDigests CustomerDigest[]
+  customerHealthSnapshots CustomerHealthSnapshot[]
+  customerNudges CustomerNudge[]
+}
+
+model Workspace {
+  id        String @id @default(cuid())
+  name      String
+  ownerUserId String
+  owner     User   @relation("WorkspaceOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  /// Mirrors billing plan tier (FREE/PRO/TEAM). Future: move Stripe fields here.
+  billingPlan String @default("FREE")
+  /// True after user loads the in-app launch demo kit for this workspace context.
+  demoWorkspaceEnabled Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members WorkspaceMember[]
+  invites WorkspaceInvite[]
+  activeForUsers User[] @relation("ActiveWorkspace")
+  productEvents ProductEvent[]
+  customerDigests CustomerDigest[]
+  customerHealthSnapshots CustomerHealthSnapshot[]
+  customerNudges CustomerNudge[]
+  reports Report[]
+  watchlists Watchlist[]
+  watchlistRuns WatchlistRun[]
+  watchlistAlerts WatchlistAlertLog[]
+  savedBoardFilters SavedBoardFilter[]
+  savedBoardFilterRuns SavedBoardFilterRun[]
+  boardAlerts BoardAlertLog[]
+  leads Lead[]
+  gtmLeads GtmLead[]
+  gtmActivities GtmActivity[]
+  reviewQueueItems ReviewQueueItem[]
+
+  @@index([ownerUserId])
+  @@index([billingPlan])
+}
+
+model ProductEvent {
+  id          String           @id @default(cuid())
+  eventType   ProductEventType
+  userId      String?
+  user        User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  workspaceId String?
+  workspace   Workspace?       @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  sessionId   String?
+  path        String?
+  entityType  String?
+  entityId    String?
+  metadata    Json?
+  createdAt   DateTime         @default(now())
+
+  @@index([eventType, createdAt])
+  @@index([userId, createdAt])
+  @@index([workspaceId, createdAt])
+  @@index([createdAt])
+}
+
+model CustomerDigest {
+  id          String             @id @default(cuid())
+  userId      String
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId String
+  workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  periodStart DateTime
+  periodEnd   DateTime
+  type        CustomerDigestType @default(WEEKLY)
+  summary     Json
+  createdAt   DateTime           @default(now())
+
+  @@index([userId, createdAt])
+  @@index([workspaceId, createdAt])
+  @@index([type, createdAt])
+  @@unique([userId, workspaceId, type, periodStart, periodEnd])
+}
+
+model CustomerHealthSnapshot {
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId       String
+  workspace         Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  activeBoards      Int       @default(0)
+  savedFiltersCount Int       @default(0)
+  watchlistsCount   Int       @default(0)
+  alertsTriggered7d Int       @default(0)
+  reportsCreated7d  Int       @default(0)
+  lastActiveAt      DateTime?
+  healthScore       Int       @default(0)
+  createdAt         DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([workspaceId, createdAt])
+  @@index([healthScore, createdAt])
+}
+
+model CustomerNudge {
+  id          String             @id @default(cuid())
+  userId      String
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId String
+  workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  type        String
+  title       String
+  message     String
+  ctaLabel    String?
+  ctaUrl      String?
+  status      CustomerNudgeStatus @default(OPEN)
+  createdAt   DateTime           @default(now())
+
+  @@index([userId, status, createdAt])
+  @@index([workspaceId, status, createdAt])
+  @@index([type, createdAt])
+}
+
+model WorkspaceMember {
+  id          String @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        WorkspaceRole @default(ANALYST)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+  @@index([role])
+}
+
+model WorkspaceInvite {
+  id          String @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  email       String
+  role        WorkspaceRole @default(ANALYST)
+  token       String @unique
+  status      InviteStatus @default(PENDING)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([workspaceId, email, status])
+  @@index([workspaceId])
+  @@index([email])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// SHOP — Simplified store model for local dashboard
+// ─────────────────────────────────────────────────────────────
+
+model Shop {
+  id                   String   @id @default(cuid())
+  domain               String   @unique
+  name                 String
+  platform             Platform @default(SHOPIFY)
+  originCountry        String?
+  language             String?
+  currency             String?
+  createdDate          DateTime?
+  lastSeenAt           DateTime?
+  trendScore           Float    @default(0)
+  monthlyVisits        Int      @default(0)
+  estimatedDailyRevenue Float   @default(0)
+  activeMetaAds        Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  ads     Ad[]
+  metrics ShopMetric[]
+
+  @@index([trendScore])
+  @@index([monthlyVisits])
+}
+
+model ShopMetric {
+  id                   String   @id @default(cuid())
+  shopId               String
+  shop                 Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  date                 DateTime
+  monthlyVisits        Int      @default(0)
+  visitsGrowth1m       Float    @default(0)
+  estimatedDailyRevenue Float   @default(0)
+  activeMetaAds        Int      @default(0)
+  createdAt            DateTime @default(now())
+
+  @@unique([shopId, date])
+  @@index([date])
+  @@index([shopId])
+}
+
+model CreditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action     String
+  creditsUsed Int
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -298,12 +986,86 @@ model Product {
   collectionMemberships CollectionProduct[]
   entityLinks           EntityLink[]
   confidenceScores      ConfidenceScore[]
+  clusterMember         ProductClusterMember?
 
   @@unique([storeId, handle])
   @@index([storeId])
   @@index([handle])
   @@index([isAvailable])
   @@index([firstSeenAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// PRODUCT CLUSTER — Cross-store product intelligence overlay
+// ─────────────────────────────────────────────────────────────
+
+model ProductCluster {
+  id                   String   @id @default(cuid())
+  /** Deterministic cluster key (heuristic signature). */
+  key                  String   @unique
+  /** Best-effort label for UI. */
+  title                String?
+  /** Optional debugging fields for why this cluster exists. */
+  handleNorm            String?
+  imageKey              String?
+
+  /** 0–1 heuristic confidence for merge safety. */
+  confidence            Float    @default(0.6)
+
+  storeCount            Int      @default(1)
+  collectionCount       Int      @default(0)
+  landingPageCount      Int      @default(0)
+  linkedRawRecordCount  Int      @default(0)
+  firstSeenAt           DateTime @default(now())
+  lastSeenAt            DateTime @default(now())
+
+  /** 0–100 placeholders for Minea-like signals (computed). */
+  saturationScore       Int      @default(0)
+  winningScore          Int      @default(0)
+  crossStoreScore       Int      @default(0)
+
+  /** 0–100 composite: winning + creative scale − saturation + freshness (see refresh_product_clusters). */
+  readyToScaleScore          Float @default(0)
+  /** 0–100 composite: multi-store dominance + creative power + persistence (computed). */
+  marketLeaderScore          Float @default(0)
+  /** 0–100 composite: early discovery momentum before saturation (computed). */
+  earlyMoverScore            Float @default(0)
+  /** 0–100 composite: crowded / late-entry risk from saturation, scale, creatives, persistence (computed). */
+  saturatedScore             Float @default(0)
+  /** Best-effort count of creative clusters overlapping cluster stores via Shop domain. */
+  linkedCreativeClusterCount Int   @default(0)
+
+  metadata              Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  members    ProductClusterMember[]
+  snapshots  ProductClusterSnapshot[]
+
+  @@index([winningScore])
+  @@index([lastSeenAt])
+  @@index([storeCount])
+  @@index([readyToScaleScore])
+  @@index([marketLeaderScore])
+  @@index([earlyMoverScore])
+  @@index([saturatedScore])
+}
+
+model ProductClusterMember {
+  id        String         @id @default(cuid())
+  clusterId String
+  cluster   ProductCluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+
+  productId String   @unique
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  /** Denormalized for query convenience */
+  storeId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clusterId])
+  @@index([storeId])
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -361,6 +1123,18 @@ model CollectionProduct {
 model Ad {
   id             String     @id @default(cuid())
   externalId     String     @unique
+  /// Optional alternate ID for Ad Library / dashboard compatibility.
+  adLibraryId    String?
+  /// Optional relation to simplified Shop model (does not affect existing Store graph).
+  shopId         String?
+  shop           Shop?      @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  /// Primary platform hint (existing `platforms` keeps placement list).
+  platform       Platform   @default(UNKNOWN)
+  creativeType   CreativeType @default(UNKNOWN)
+  creativeUrl    String?
+  thumbnailUrl   String?
+  impressionsEstimate Int   @default(0)
+  adCount        Int        @default(1)
   pageId         String?
   pageName       String?
   pageUrl        String?
@@ -391,6 +1165,7 @@ model Ad {
   landingPages     LandingPage[]
   entityLinks      EntityLink[]
   confidenceScores ConfidenceScore[]
+  creativeClusterMember CreativeClusterMember?
 
   winningProbabilityScore Int?
   opportunityLevel        OpportunityLevel?
@@ -399,9 +1174,68 @@ model Ad {
   opportunityUpdatedAt    DateTime?
 
   @@index([pageId])
+  @@index([adLibraryId])
+  @@index([shopId])
+  @@index([platform])
+  @@index([lastSeenAt])
   @@index([isActive])
   @@index([startDate])
   @@index([firstSeenAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// CREATIVE CLUSTER — Cross-ad creative intelligence overlay
+// ─────────────────────────────────────────────────────────────
+
+model CreativeCluster {
+  id        String   @id @default(cuid())
+  /** Deterministic fingerprint key (heuristic signature) */
+  fingerprint String @unique
+  platform    Platform @default(UNKNOWN)
+
+  creativeCount       Int      @default(1)
+  storeCount          Int      @default(0)
+  productClusterCount Int      @default(0)
+  firstSeenAt         DateTime @default(now())
+  lastSeenAt          DateTime @default(now())
+
+  saturationScore Int @default(0)
+  scaleScore      Int @default(0)
+
+  /** 0–100 composite: winning creative strength (see refresh_creative_clusters). */
+  creativeWinnerScore Float @default(0)
+
+  /** 0–1 safety confidence for merges */
+  confidence Float @default(0.7)
+
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  members   CreativeClusterMember[]
+  snapshots CreativeClusterSnapshot[]
+
+  @@index([scaleScore])
+  @@index([lastSeenAt])
+  @@index([creativeWinnerScore])
+}
+
+model CreativeClusterMember {
+  id        String         @id @default(cuid())
+  clusterId String
+  cluster   CreativeCluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+
+  adId      String   @unique
+  ad        Ad       @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  /** Denormalized for queries */
+  shopId    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clusterId])
+  @@index([shopId])
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -540,6 +1374,26 @@ model InferredLink {
 }
 
 // ─────────────────────────────────────────────────────────────
+// SCRAPER JOB — Local worker job log (no external integrations)
+// ─────────────────────────────────────────────────────────────
+
+model ScraperJob {
+  id         String   @id @default(cuid())
+  type       String
+  status     String
+  payload    Json?
+  startedAt  DateTime?
+  finishedAt DateTime?
+  error      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
 // MERGE CANDIDATE — Duplicate / merge intelligence (not applied automatically)
 // ─────────────────────────────────────────────────────────────
 
@@ -621,4 +1475,172 @@ model SyncLog {
   @@index([jobId])
   @@index([level])
   @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// SAVED BOARD FILTER — Saved criteria; future alerts / automation
+// ─────────────────────────────────────────────────────────────
+
+model SavedBoardFilter {
+  id               String    @id @default(cuid())
+  workspaceId      String?
+  workspace        Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name             String
+  boardType        BoardType
+  minScore         Float?
+  minStores        Int?
+  maxSaturation    Float?
+  platform         Platform?
+  isEnabled        Boolean   @default(true)
+  lastMatchedCount Int       @default(0)
+  lastEvaluatedAt  DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  runs   SavedBoardFilterRun[]
+  alerts BoardAlertLog[]
+
+  @@index([boardType])
+  @@index([isEnabled])
+  @@index([workspaceId, createdAt])
+}
+
+model SavedBoardFilterRun {
+  id                     String   @id @default(cuid())
+  workspaceId             String?
+  workspace               Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  savedFilterId          String
+  savedFilter            SavedBoardFilter @relation(fields: [savedFilterId], references: [id], onDelete: Cascade)
+  matchedCount           Int
+  previousMatchedCount   Int
+  deltaCount             Int
+  status                 String
+  triggeredAlert         Boolean  @default(false)
+  summary                String?
+  createdAt              DateTime @default(now())
+
+  @@index([savedFilterId])
+  @@index([createdAt])
+  @@index([workspaceId, createdAt])
+}
+
+model BoardAlertLog {
+  id            String   @id @default(cuid())
+  workspaceId   String?
+  workspace     Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  savedFilterId String
+  savedFilter   SavedBoardFilter @relation(fields: [savedFilterId], references: [id], onDelete: Cascade)
+  boardType     BoardType
+  title         String
+  message       String
+  severity      AlertSeverity
+  matchedCount  Int
+  deltaCount    Int
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  @@index([savedFilterId])
+  @@index([boardType])
+  @@index([severity])
+  @@index([createdAt])
+  @@index([workspaceId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// HISTORICAL SNAPSHOTS — Daily time-series for timeline / Minea-style moat
+// ─────────────────────────────────────────────────────────────
+
+model ProductClusterSnapshot {
+  id               String         @id @default(cuid())
+  productClusterId String
+  productCluster   ProductCluster @relation(fields: [productClusterId], references: [id], onDelete: Cascade)
+  /** UTC start-of-day for dedupe (one row per cluster per calendar day). */
+  snapshotDate DateTime
+
+  winningScore    Int   @default(0)
+  saturationScore Int   @default(0)
+  readyToScaleScore Float @default(0)
+  marketLeaderScore Float @default(0)
+  earlyMoverScore   Float @default(0)
+  saturatedScore    Float @default(0)
+
+  storeCount           Int @default(0)
+  /** Linked creative clusters count (denormalized from ProductCluster). */
+  creativeCount        Int @default(0)
+  linkedRawRecordCount Int @default(0)
+
+  /** vs previous calendar day snapshot (null if none). */
+  deltaReadyToScale Float?
+  deltaStoreCount   Int?
+  deltaWinningScore Int?
+
+  createdAt DateTime @default(now())
+
+  @@unique([productClusterId, snapshotDate])
+  @@index([snapshotDate])
+  @@index([productClusterId, snapshotDate])
+}
+
+model CreativeClusterSnapshot {
+  id                String          @id @default(cuid())
+  creativeClusterId String
+  creativeCluster   CreativeCluster @relation(fields: [creativeClusterId], references: [id], onDelete: Cascade)
+  snapshotDate      DateTime
+
+  scaleScore          Int   @default(0)
+  creativeWinnerScore Float @default(0)
+  saturationScore     Int   @default(0)
+  creativeCount       Int   @default(0)
+  storeCount          Int   @default(0)
+  productClusterCount Int   @default(0)
+
+  deltaScaleScore    Int?
+  deltaCreativeCount Int?
+
+  createdAt DateTime @default(now())
+
+  @@unique([creativeClusterId, snapshotDate])
+  @@index([snapshotDate])
+  @@index([creativeClusterId, snapshotDate])
+}
+
+model StoreSnapshot {
+  id           String @id @default(cuid())
+  storeId      String
+  store        Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  snapshotDate DateTime
+
+  trafficScore            Int?
+  winningProbabilityScore Int?
+  productClusterCount     Int @default(0)
+  creativeClusterCount    Int @default(0)
+  productCount            Int @default(0)
+
+  deltaTrafficScore    Int?
+  deltaProductClusters Int?
+
+  createdAt DateTime @default(now())
+
+  @@unique([storeId, snapshotDate])
+  @@index([snapshotDate])
+  @@index([storeId, snapshotDate])
+}
+
+/** Light daily aggregate per board type (leaders / counts). */
+model BoardSnapshot {
+  id           String    @id @default(cuid())
+  boardType    BoardType
+  snapshotDate DateTime
+
+  itemCount      Int    @default(0)
+  avgTopScore    Float  @default(0)
+  topClusterId   String?
+  topScore       Float  @default(0)
+  metadata       Json?
+
+  createdAt DateTime @default(now())
+
+  @@unique([boardType, snapshotDate])
+  @@index([snapshotDate])
+  @@index([boardType])
 }

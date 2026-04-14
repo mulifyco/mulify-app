@@ -24,32 +24,32 @@ export default function EntityLinksBlock({
 }) {
   if (!links.length) {
     return (
-      <div className="rounded-lg border border-gray-800 bg-gray-900/40 p-4 text-xs text-gray-600">
+      <div className="rounded-lg border border-border bg-card p-4 text-xs text-muted-2 shadow-sm">
         No normalized entity links.
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border border-gray-800 bg-gray-900/50 overflow-hidden">
-      <div className="px-3 py-2 border-b border-gray-800 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+    <div className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
+      <div className="px-3 py-2 border-b border-border text-xs font-semibold text-muted uppercase tracking-wide bg-surface-2">
         {title}
       </div>
-      <ul className="divide-y divide-gray-800/60">
+      <ul className="divide-y divide-border">
         {links.map((l) => {
           const path = hrefFor[l.entityType]?.(l.entityId);
           return (
             <li key={l.id} className="px-3 py-2 flex items-center justify-between gap-3 text-sm">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="text-[10px] text-gray-500 shrink-0">{l.entityType}</span>
-                <code className="text-xs text-gray-400 truncate font-mono">{l.entityId}</code>
+                <span className="text-[10px] text-muted shrink-0">{l.entityType}</span>
+                <code className="text-xs text-muted-2 truncate font-mono">{l.entityId}</code>
               </div>
               {path ? (
-                <Link href={path} className="text-xs text-indigo-400 hover:text-indigo-300 shrink-0">
+                <Link href={path} className="text-xs text-indigo-600 hover:opacity-80 shrink-0">
                   Open
                 </Link>
               ) : (
-                <span className="text-xs text-gray-600 shrink-0">—</span>
+                <span className="text-xs text-muted-2 shrink-0">—</span>
               )}
             </li>
           );

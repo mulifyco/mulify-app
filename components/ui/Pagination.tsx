@@ -26,25 +26,25 @@ export default function Pagination({ total, page, pageSize, totalPages }: Pagina
   const to = Math.min(page * pageSize, total);
 
   return (
-    <div className="flex items-center justify-between mt-4 text-sm text-gray-500">
-      <span>
-        {from}–{to} of {total.toLocaleString()}
+    <div className="flex items-center justify-between mt-4 text-sm text-muted">
+      <span className="text-[11px] text-muted-2 tabular-nums">
+        {from.toLocaleString()}–{to.toLocaleString()} of {total.toLocaleString()}
       </span>
       <div className="flex items-center gap-2">
         <button
           onClick={() => navigate(page - 1)}
           disabled={page <= 1}
-          className="px-3 py-1.5 bg-gray-800 rounded disabled:opacity-30 hover:bg-gray-700 text-gray-300"
+          className="px-3 py-1.5 rounded-xl border border-border bg-card/60 glass text-xs font-medium text-foreground disabled:opacity-30 hover:bg-surface-2/60 transition-colors"
         >
           ← Prev
         </button>
-        <span className="text-gray-600">
+        <span className="text-[11px] text-muted-2 px-2 tabular-nums">
           {page} / {totalPages}
         </span>
         <button
           onClick={() => navigate(page + 1)}
           disabled={page >= totalPages}
-          className="px-3 py-1.5 bg-gray-800 rounded disabled:opacity-30 hover:bg-gray-700 text-gray-300"
+          className="px-3 py-1.5 rounded-xl border border-border bg-card/60 glass text-xs font-medium text-foreground disabled:opacity-30 hover:bg-surface-2/60 transition-colors"
         >
           Next →
         </button>

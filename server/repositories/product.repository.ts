@@ -37,6 +37,7 @@ export const ProductRepository = {
         collectionMemberships: { include: { collection: true } },
         confidenceScores: true,
         entityLinks: { include: { rawRecord: true } },
+        clusterMember: { include: { cluster: true } },
       },
     });
   },
@@ -107,6 +108,7 @@ export const ProductRepository = {
         include: {
           store: { select: { id: true, domain: true, name: true } },
           confidenceScores: true,
+          clusterMember: { include: { cluster: true } },
           _count: { select: { collectionMemberships: true } },
         },
         orderBy: { firstSeenAt: "desc" },

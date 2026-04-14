@@ -1,21 +1,28 @@
 interface BadgeProps {
   label: string;
   variant?: "default" | "green" | "yellow" | "red" | "blue" | "purple";
+  pill?: boolean;
 }
 
 const variantMap: Record<string, string> = {
-  default: "bg-gray-800 text-gray-300",
-  green: "bg-emerald-900/50 text-emerald-400 border border-emerald-800",
-  yellow: "bg-yellow-900/50 text-yellow-400 border border-yellow-800",
-  red: "bg-red-900/50 text-red-400 border border-red-800",
-  blue: "bg-indigo-900/50 text-indigo-400 border border-indigo-800",
-  purple: "bg-purple-900/50 text-purple-400 border border-purple-800",
+  default:
+    "bg-[color:var(--badge-default-bg)] text-[color:var(--badge-default-fg)] border border-[color:var(--badge-default-border)]",
+  green:
+    "bg-[color:var(--badge-green-bg)] text-[color:var(--badge-green-fg)] border border-[color:var(--badge-green-border)]",
+  yellow:
+    "bg-[color:var(--badge-yellow-bg)] text-[color:var(--badge-yellow-fg)] border border-[color:var(--badge-yellow-border)]",
+  red:
+    "bg-[color:var(--badge-red-bg)] text-[color:var(--badge-red-fg)] border border-[color:var(--badge-red-border)]",
+  blue:
+    "bg-[color:var(--badge-blue-bg)] text-[color:var(--badge-blue-fg)] border border-[color:var(--badge-blue-border)]",
+  purple:
+    "bg-[color:var(--badge-purple-bg)] text-[color:var(--badge-purple-fg)] border border-[color:var(--badge-purple-border)]",
 };
 
-export default function Badge({ label, variant = "default" }: BadgeProps) {
+export default function Badge({ label, variant = "default", pill = false }: BadgeProps) {
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${variantMap[variant]}`}
+      className={`inline-flex items-center px-2 py-0.5 text-xs font-medium ${pill ? "rounded-full" : "rounded-md"} ${variantMap[variant]}`}
     >
       {label}
     </span>

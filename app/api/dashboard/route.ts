@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getDashboardStats } from "@/server/services/dashboard.service";
+import { jsonWithReadCache } from "@/lib/http/read-cache";
+import { getCachedDashboardStats } from "@/lib/perf/cached-server-data";
+import { withRouteTiming } from "@/lib/perf/route-timing";
 
 export async function GET() {
   const session = await auth();
@@ -9,8 +11,8 @@ export async function GET() {
   }
 
   try {
-    const stats = await getDashboardStats();
-    return NextResponse.json(stats);
+    const stats = await withRouteTiming("/api/dashboard", () => getCachedDashboardStats());
+    return jsonWithReadCache(stats);
   } catch (err) {
     console.error("[api/dashboard]", err);
     return NextResponse.json(

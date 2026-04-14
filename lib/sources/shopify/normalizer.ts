@@ -103,6 +103,7 @@ function mapStore(
       moneyFormat: raw.moneyFormat,
       shopifyTheme: raw.shopifyTheme,
       publicSignals: ["cart.js"],
+      htmlSignals: raw._htmlSignals ?? undefined,
       domainResolution: {
         fetchHost: raw.fetchHost,
         configuredSourceDomain: raw.configuredSourceDomain,
@@ -207,7 +208,11 @@ function mapProduct(
     currency: undefined,
     isAvailable,
     publishedAt: parseDate(raw.published_at),
-    metadata: { fetchedAt: raw._fetchedAt },
+    metadata: {
+      fetchedAt: raw._fetchedAt,
+      offerSignals: raw._offerSignals ?? undefined,
+      htmlSignals: raw._htmlSignals ?? undefined,
+    },
     rawRecordId,
     collectionHandles: extractCollectionHandlesFromTags(tags),
   };

@@ -8,11 +8,19 @@ import prisma from "@/lib/prisma";
 import { computeConfidence } from "@/lib/confidence";
 import { logger } from "@/lib/logger";
 import type { EntityType } from "@/types";
+import { normalizeShopifyDomain, normalizeUrl } from "@/lib/url";
+import { canonicalStoreDomainForEntity } from "@/lib/intelligence/entity-identity";
+import { openReviewQueueItem } from "@/server/services/review-queue.service";
+import { landingPageFieldsFromNormalizedUrl } from "@/server/intelligence/url-normalize";
 import {
   syncShopifyLandingGraphFromCollection,
   syncShopifyLandingGraphFromProduct,
   syncShopifyLandingGraphFromStore,
 } from "@/lib/sources/persistence/shopify-landing-graph";
+
+function asRecordObj(v: unknown): Record<string, unknown> {
+  return v && typeof v === "object" && !Array.isArray(v) ? { ...(v as Record<string, unknown>) } : {};
+}
 
 export async function applyMappingResult(params: {
   mapping: MappingResult;
@@ -44,10 +52,16 @@ export async function applyMappingResult(params: {
 
 async function applyAd(m: MappingResult & { entity: { type: "AD" } }, rawRecordId: string) {
   const d = m.entity.data;
+  const primaryPlatform =
+    d.platform ?? (d.platforms?.length ? d.platforms[0] : undefined) ?? "UNKNOWN";
   const ad = await prisma.ad.upsert({
     where: { externalId: d.externalId },
     create: {
       externalId: d.externalId,
+      platform: primaryPlatform,
+      creativeType: d.creativeType ?? "UNKNOWN",
+      creativeUrl: d.creativeUrl ?? null,
+      thumbnailUrl: d.thumbnailUrl ?? null,
       pageId: d.pageId,
       pageName: d.pageName,
       pageUrl: d.pageUrl,
@@ -72,10 +86,21 @@ async function applyAd(m: MappingResult & { entity: { type: "AD" } }, rawRecordI
       metadata: d.metadata as never,
     },
     update: {
+      platform: primaryPlatform,
+      creativeType: d.creativeType ?? undefined,
+      creativeUrl: d.creativeUrl,
+      thumbnailUrl: d.thumbnailUrl,
       pageName: d.pageName,
+      pageUrl: d.pageUrl,
       adText: d.adText,
       adTitle: d.adTitle,
       adBody: d.adBody,
+      callToAction: d.callToAction,
+      adImageUrl: d.adImageUrl,
+      adVideoUrl: d.adVideoUrl,
+      destinationUrl: d.destinationUrl,
+      canonicalUrl: d.canonicalUrl,
+      platforms: d.platforms,
       isActive: d.isActive,
       impressionsMin: d.impressionsMin,
       impressionsMax: d.impressionsMax,
@@ -98,6 +123,68 @@ async function applyAd(m: MappingResult & { entity: { type: "AD" } }, rawRecordI
     update: {},
   });
 
+  // Best-effort: connect ad → landing pages when we have destination hints.
+  // Keeps discovery / compare / boards fed even when users don't add sources manually.
+  try {
+    const meta = (d.metadata ?? {}) as Record<string, unknown>;
+    const rawCandidates = Array.isArray(meta.destinationUrlCandidates)
+      ? (meta.destinationUrlCandidates as unknown[])
+      : [];
+    const candidates = [
+      ...(typeof d.destinationUrl === "string" ? [d.destinationUrl] : []),
+      ...rawCandidates.filter((x): x is string => typeof x === "string"),
+    ]
+      .map((u) => normalizeUrl(u))
+      .filter((u): u is string => Boolean(u))
+      .slice(0, 3);
+
+    for (const norm of candidates) {
+      const fields = landingPageFieldsFromNormalizedUrl(norm);
+      if (!fields) continue;
+      const lp = await prisma.landingPage.upsert({
+        where: { url: fields.url },
+        create: { url: fields.url, domain: fields.domain, path: fields.path },
+        update: { lastSeenAt: new Date(), domain: fields.domain, path: fields.path },
+      });
+
+      await prisma.ad.update({
+        where: { id: ad.id },
+        data: { landingPages: { connect: { id: lp.id } } },
+      });
+
+      await prisma.entityLink
+        .upsert({
+          where: {
+            rawRecordId_entityType_entityId: {
+              rawRecordId,
+              entityType: "LANDING_PAGE",
+              entityId: lp.id,
+            },
+          },
+          create: {
+            rawRecordId,
+            entityType: "LANDING_PAGE",
+            entityId: lp.id,
+            landingPageId: lp.id,
+            linkStrength: 0.72,
+            linkProvenance: "ad_destination_url",
+            firstConfirmedAt: new Date(),
+            lastConfirmedAt: new Date(),
+          },
+          update: {
+            landingPageId: lp.id,
+            linkStrength: 0.72,
+            linkProvenance: "ad_destination_url",
+            lastConfirmedAt: new Date(),
+            staleAt: null,
+          },
+        })
+        .catch(() => null);
+    }
+  } catch {
+    /* best-effort */
+  }
+
   await prisma.rawRecord.update({
     where: { id: rawRecordId },
     data: { status: "NORMALIZED", normalizedAt: new Date(), processingError: null },
@@ -108,10 +195,42 @@ async function applyAd(m: MappingResult & { entity: { type: "AD" } }, rawRecordI
 
 async function applyStore(m: MappingResult & { entity: { type: "STORE" } }, rawRecordId: string) {
   const d = m.entity.data;
+  const rawObserved = normalizeShopifyDomain(d.domain);
+  const canonical = canonicalStoreDomainForEntity(d.domain) || rawObserved;
+  if (!canonical) {
+    logger.warn("apply_mapping.store_missing_domain", { rawRecordId });
+    return;
+  }
+
+  const existing = await prisma.store.findUnique({
+    where: { domain: canonical },
+    select: { id: true, metadata: true },
+  });
+
+  const prev = asRecordObj(existing?.metadata);
+  const incoming = asRecordObj(d.metadata);
+  const aliasSet = new Set<string>();
+  for (const x of Array.isArray(prev.domainAliases) ? (prev.domainAliases as unknown[]) : []) {
+    if (typeof x === "string" && x.trim()) aliasSet.add(normalizeShopifyDomain(x));
+  }
+  if (rawObserved && rawObserved !== canonical) aliasSet.add(rawObserved);
+
+  const mergedMetadata = {
+    ...prev,
+    ...incoming,
+    domainAliases: [...aliasSet].filter(Boolean).slice(0, 32),
+    entityQuality: {
+      canonicalDomain: canonical,
+      observedDomain: rawObserved,
+      fieldCompleteness: m.confidence.fieldCompleteness,
+      updatedAt: new Date().toISOString(),
+    },
+  };
+
   const store = await prisma.store.upsert({
-    where: { domain: d.domain },
+    where: { domain: canonical },
     create: {
-      domain: d.domain,
+      domain: canonical,
       name: d.name,
       description: d.description,
       platform: d.platform,
@@ -123,7 +242,7 @@ async function applyStore(m: MappingResult & { entity: { type: "STORE" } }, rawR
       metaDescription: d.metaDescription,
       socialLinks: d.socialLinks as never,
       tags: d.tags,
-      metadata: d.metadata as never,
+      metadata: mergedMetadata as never,
       lastCrawledAt: new Date(),
     },
     update: {
@@ -132,9 +251,32 @@ async function applyStore(m: MappingResult & { entity: { type: "STORE" } }, rawR
       currency: d.currency ?? undefined,
       lastSeenAt: new Date(),
       lastCrawledAt: new Date(),
-      metadata: d.metadata as never,
+      metadata: mergedMetadata as never,
     },
   });
+
+  if (rawObserved && rawObserved !== canonical) {
+    const alt = await prisma.store.findUnique({ where: { domain: rawObserved }, select: { id: true } });
+    if (alt && alt.id !== store.id) {
+      const pair = [store.id, alt.id].sort().join(":");
+      await openReviewQueueItem({
+        type: "ENTITY_LINK_REVIEW",
+        dedupeKey: `store_host_alias:${pair}`,
+        title: `Store host alias: ${rawObserved} → ${canonical}`,
+        reason:
+          `Possible duplicate Store rows for one storefront (non-destructive). Canonical key: ${canonical}.`.slice(0, 420),
+        entityType: "STORE",
+        entityId: store.id,
+        metadata: {
+          kind: "STORE_CANONICAL_COLLISION",
+          canonicalDomain: canonical,
+          altDomain: rawObserved,
+          altStoreId: alt.id,
+          primaryStoreId: store.id,
+        },
+      }).catch(() => null);
+    }
+  }
 
   await prisma.entityLink.upsert({
     where: {
@@ -176,9 +318,10 @@ async function applyProduct(
   rawRecordId: string
 ) {
   const d = m.entity.data;
+  const storeDomainCanon = canonicalStoreDomainForEntity(d.storeDomain) || normalizeShopifyDomain(d.storeDomain);
   const store = await prisma.store.upsert({
-    where: { domain: d.storeDomain },
-    create: { domain: d.storeDomain, platform: "shopify" },
+    where: { domain: storeDomainCanon },
+    create: { domain: storeDomainCanon, platform: "shopify" },
     update: { lastSeenAt: new Date() },
   });
 
@@ -261,9 +404,10 @@ async function applyCollection(
   rawRecordId: string
 ) {
   const d = m.entity.data;
+  const storeDomainCanon = canonicalStoreDomainForEntity(d.storeDomain) || normalizeShopifyDomain(d.storeDomain);
   const store = await prisma.store.upsert({
-    where: { domain: d.storeDomain },
-    create: { domain: d.storeDomain, platform: "shopify" },
+    where: { domain: storeDomainCanon },
+    create: { domain: storeDomainCanon, platform: "shopify" },
     update: { lastSeenAt: new Date() },
   });
 

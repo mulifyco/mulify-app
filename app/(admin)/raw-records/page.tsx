@@ -10,6 +10,8 @@ import SearchBar from "@/components/ui/SearchBar";
 import FilterSelect from "@/components/internal/FilterSelect";
 import QueryErrorState from "@/components/internal/QueryErrorState";
 import { jsonSnippet } from "@/lib/admin/format-payload";
+import EmptyState from "@/components/internal/EmptyState";
+import RawRecordDrawer from "@/components/internal/RawRecordDrawer";
 import {
   parseEntityTypeParam,
   parseRecordStatusParam,
@@ -122,7 +124,7 @@ export default async function RawRecordsPage({ searchParams }: Props) {
         description="Immutable payloads — parse status, job lineage, and normalized entity links"
       />
 
-      <div className="flex flex-wrap items-center gap-3 mb-3 sticky top-0 z-10 py-2 -mt-2 bg-[#0c0d10]/95 backdrop-blur-sm border-b border-gray-800/80">
+      <div className="flex flex-wrap items-center gap-3 mb-3 sticky top-0 z-10 py-2 -mt-2 bg-background/95 backdrop-blur-sm border-b border-border">
         <Suspense fallback={null}>
           <SearchBar placeholder="External ID or record id…" />
         </Suspense>
@@ -174,12 +176,12 @@ export default async function RawRecordsPage({ searchParams }: Props) {
             options={RECENT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
           />
         </Suspense>
-        <Link href="/raw-records" className="text-xs text-gray-500 ml-auto hover:text-gray-400">
+        <Link href="/raw-records" className="text-xs text-muted ml-auto hover:opacity-80">
           Reset
         </Link>
       </div>
 
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-gray-600 mb-4">
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-2 mb-4">
         {stats.byStatus.map((s: (typeof stats.byStatus)[number]) => (
           <span key={String(s.status)}>
             {String(s.status)}: {s._count}
@@ -187,91 +189,100 @@ export default async function RawRecordsPage({ searchParams }: Props) {
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-800">
+      <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
         <table className="w-full text-sm min-w-[1120px]">
           <thead>
-            <tr className="bg-gray-900/80 border-b border-gray-800 text-left">
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+            <tr className="bg-surface-2 border-b border-border text-left">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Record ID
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 External ID
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Entity
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Source
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Job
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Parse
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase text-right">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase text-right">
                 Links
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase">
                 Ingested
               </th>
-              <th className="px-3 py-2.5 text-[11px] font-semibold text-gray-500 uppercase min-w-[200px]">
+              <th className="px-3 py-2.5 text-[11px] font-semibold text-muted uppercase min-w-[200px]">
                 Payload preview
               </th>
               <th className="px-3 py-2.5 w-10" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-800/60">
+          <tbody className="divide-y divide-border">
             {result.data.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-3 py-10 text-center text-gray-600">
-                  No raw records match filters.
+                <td colSpan={10}>
+                  <EmptyState
+                    title="No raw records match filters"
+                    description="Try broadening your search or clearing filters."
+                  />
                 </td>
               </tr>
             ) : (
               result.data.map((record: RawRecordRow) => (
-                <tr key={record.id} className="hover:bg-gray-900/40">
-                  <td className="px-3 py-2.5 font-mono text-[10px] text-gray-600 max-w-[100px] truncate">
-                    <Link href={`/raw-records/${record.id}`} className="hover:text-indigo-400">
+                <tr key={record.id} className="hover:bg-surface-2/70">
+                  <td className="px-3 py-2.5 font-mono text-[10px] text-muted max-w-[100px] truncate">
+                    <Link href={`/raw-records/${record.id}`} className="hover:text-indigo-600">
                       {record.id.slice(0, 12)}…
                     </Link>
                   </td>
-                  <td className="px-3 py-2.5 font-mono text-xs text-gray-300 max-w-[140px] truncate">
+                  <td className="px-3 py-2.5 font-mono text-xs text-foreground max-w-[140px] truncate">
                     {record.externalId}
                   </td>
                   <td className="px-3 py-2.5">
-                    <span className="text-[10px] text-gray-500 bg-gray-800/80 px-2 py-0.5 rounded">
+                    <span className="text-[10px] text-muted bg-surface-2 px-2 py-0.5 rounded border border-border">
                       {record.entityType}
                     </span>
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-gray-500">
+                  <td className="px-3 py-2.5 text-xs text-muted">
                     <div>{record.source.name}</div>
-                    <div className="text-[10px] text-gray-600 mt-0.5">{record.sourceType}</div>
+                    <div className="text-[10px] text-muted-2 mt-0.5">{record.sourceType}</div>
                   </td>
                   <td className="px-3 py-2.5 text-xs">
                     {record.job ? (
-                      <Link href={`/jobs/${record.job.id}`} className="text-indigo-400 font-mono">
+                      <Link href={`/jobs/${record.job.id}`} className="text-indigo-600 hover:opacity-80 font-mono">
                         {record.job.id.slice(0, 8)}…
                       </Link>
                     ) : (
-                      <span className="text-gray-600">—</span>
+                      <span className="text-muted-2">—</span>
                     )}
                   </td>
                   <td className="px-3 py-2.5">{statusBadge(record.status)}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums text-gray-400">
+                  <td className="px-3 py-2.5 text-right tabular-nums text-muted">
                     {record.entityLinks.length}
                     {record._count.entityLinks > record.entityLinks.length && (
-                      <span className="text-gray-600"> / {record._count.entityLinks}</span>
+                      <span className="text-muted-2"> / {record._count.entityLinks}</span>
                     )}
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-gray-500">{timeAgo(record.firstSeenAt)}</td>
-                  <td className="px-3 py-2.5 text-[11px] font-mono text-gray-500 leading-snug max-w-[280px]">
+                  <td className="px-3 py-2.5 text-xs text-muted">{timeAgo(record.firstSeenAt)}</td>
+                  <td className="px-3 py-2.5 text-[11px] font-mono text-muted leading-snug max-w-[280px]">
                     <span className="line-clamp-2 break-all">{jsonSnippet(record.rawPayload, 200)}</span>
                   </td>
                   <td className="px-3 py-2.5">
-                    <Link href={`/raw-records/${record.id}`} className="text-xs text-indigo-400">
-                      Open
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <RawRecordDrawer
+                        title={`${record.entityType} · ${record.externalId}`}
+                        payload={record.rawPayload}
+                      />
+                      <Link href={`/raw-records/${record.id}`} className="text-xs text-muted hover:opacity-80">
+                        Detail
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))

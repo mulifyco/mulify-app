@@ -10,6 +10,8 @@ import { hashPayload } from "@/lib/hash";
 export interface PersistRawResult {
   id: string;
   isNew: boolean;
+  /** True when payload hash unchanged — caller should skip normalize/apply to avoid duplicate entities. */
+  skipNormalization?: boolean;
 }
 
 export async function persistRawPayload(params: {
@@ -33,6 +35,19 @@ export async function persistRawPayload(params: {
   });
 
   if (existing) {
+    if (existing.payloadHash === payloadHash) {
+      await prisma.rawRecord.update({
+        where: { id: existing.id },
+        data: {
+          lastSeenAt: new Date(),
+          jobId: params.jobId,
+          duplicateIngestCount: { increment: 1 },
+          lastDuplicateIngestAt: new Date(),
+        },
+      });
+      return { id: existing.id, isNew: false, skipNormalization: true };
+    }
+
     await prisma.rawRecord.update({
       where: { id: existing.id },
       data: {

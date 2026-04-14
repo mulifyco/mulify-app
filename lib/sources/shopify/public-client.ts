@@ -56,7 +56,106 @@ async function fetchJsonPublic<T>(url: string, timeoutMs: number): Promise<T> {
   }
 }
 
+async function fetchHtmlPublic(url: string, timeoutMs: number): Promise<string | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      redirect: "follow",
+      headers: {
+        Accept: "text/html,application/xhtml+xml",
+        "User-Agent": "Mulify-Library/1.0",
+      },
+      signal: controller.signal,
+    });
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      throw new HttpError(response.status, response.statusText, url, body);
+    }
+    const text = await response.text().catch(() => "");
+    return text || null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 export type ShopifyPublicFetchOptions = { mock?: boolean };
+
+function extractHandlesFromHtml(html: string, kind: "products" | "collections", cap: number): string[] {
+  const out: string[] = [];
+  const re =
+    kind === "products"
+      ? /\/products\/([a-z0-9][a-z0-9-_]{1,120})/gi
+      : /\/collections\/([a-z0-9][a-z0-9-_]{1,120})/gi;
+  re.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    const h = String(m[1] ?? "").trim();
+    if (!h) continue;
+    out.push(h);
+    if (out.length >= cap) break;
+  }
+  return [...new Set(out)];
+}
+
+function extractJsonScript(html: string, id: string): unknown | null {
+  const re = new RegExp(`<script[^>]*id="${id}"[^>]*>([\\s\\S]*?)<\\/script>`, "i");
+  const m = html.match(re);
+  if (!m?.[1]) return null;
+  try {
+    return JSON.parse(m[1].trim());
+  } catch {
+    return null;
+  }
+}
+
+function extractJsonLdBlocks(html: string, cap: number): unknown[] {
+  const out: unknown[] = [];
+  const re = /<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    const raw = m[1]?.trim();
+    if (!raw) continue;
+    try {
+      const parsed = JSON.parse(raw);
+      out.push(parsed);
+      if (out.length >= cap) break;
+    } catch {
+      // some themes embed invalid JSON-LD; ignore
+    }
+  }
+  return out;
+}
+
+function offerSignalsFromJsonLd(ld: unknown): Record<string, unknown> | null {
+  // Best-effort: looks for Product/Offer nodes.
+  const pick = (n: unknown): Record<string, unknown> | null =>
+    n && typeof n === "object" && !Array.isArray(n) ? (n as Record<string, unknown>) : null;
+  const flatten = (n: unknown): unknown[] => (Array.isArray(n) ? n : [n]);
+  const nodes = flatten(ld);
+  for (const node of nodes) {
+    const r = pick(node);
+    if (!r) continue;
+    const t = String(r["@type"] ?? r.type ?? "").toLowerCase();
+    if (t !== "product") continue;
+    const offers = r.offers;
+    const offerNodes = flatten(offers);
+    for (const o of offerNodes) {
+      const or = pick(o);
+      if (!or) continue;
+      const price = typeof or.price === "string" || typeof or.price === "number" ? or.price : undefined;
+      const availability = typeof or.availability === "string" ? or.availability : undefined;
+      const priceCurrency = typeof or.priceCurrency === "string" ? or.priceCurrency : undefined;
+      const out: Record<string, unknown> = {};
+      if (price !== undefined) out.price = price;
+      if (priceCurrency) out.priceCurrency = priceCurrency;
+      if (availability) out.availability = availability;
+      return out;
+    }
+  }
+  return null;
+}
 
 function extractProductsArray(data: unknown): unknown[] {
   if (data == null) return [];
@@ -229,6 +328,80 @@ export async function fetchShopifyCartMeta(
   }
 }
 
+export async function fetchShopifyStorefrontHtmlSignals(
+  domain: string,
+  options?: ShopifyPublicFetchOptions
+): Promise<{ collections: string[]; products: string[]; nextDataPresent: boolean; jsonLdBlocks: number } | null> {
+  if (options?.mock) return { collections: [], products: [], nextDataPresent: false, jsonLdBlocks: 0 };
+  try {
+    const home = await fetchHtmlPublic(`https://${domain}/`, 18_000);
+    if (!home) return null;
+    const collections = extractHandlesFromHtml(home, "collections", 160);
+    const products = extractHandlesFromHtml(home, "products", 160);
+    const next = extractJsonScript(home, "__NEXT_DATA__");
+    const ld = extractJsonLdBlocks(home, 24);
+    return { collections, products, nextDataPresent: Boolean(next), jsonLdBlocks: ld.length };
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchShopifyProductPageSignals(
+  domain: string,
+  handle: string,
+  options?: ShopifyPublicFetchOptions
+): Promise<{ offerSignals: Record<string, unknown>; htmlSignals: Record<string, unknown> } | null> {
+  if (options?.mock) return null;
+  const url = `https://${domain}/products/${encodeURIComponent(handle)}`;
+  try {
+    const html = await fetchHtmlPublic(url, 20_000);
+    if (!html) return null;
+    const ld = extractJsonLdBlocks(html, 16);
+    const ldOffer = ld.map(offerSignalsFromJsonLd).find(Boolean) as Record<string, unknown> | null;
+
+    const lower = html.toLowerCase();
+    const hasFreeShipping = lower.includes("free shipping") || lower.includes("ücretsiz kargo");
+    const hasGuarantee = lower.includes("guarantee") || lower.includes("money back") || lower.includes("iade");
+    const hasSubscription =
+      lower.includes("subscribe") || lower.includes("subscription") || lower.includes("abon") || lower.includes("subscribe & save");
+    const hasBundle = lower.includes("bundle") || lower.includes("2 for") || lower.includes("3 for") || lower.includes("paket");
+    const urgency =
+      lower.includes("only ") && (lower.includes("left") || lower.includes("remaining"))
+        ? "low_stock_hint"
+        : lower.includes("limited time") || lower.includes("ends in")
+          ? "time_limited_hint"
+          : null;
+
+    // Best-effort review count
+    const reviewCount =
+      html.match(/"reviewCount"\s*:\s*(\d+)/i)?.[1] ??
+      html.match(/data-review-count="(\d+)"/i)?.[1] ??
+      html.match(/(\d{1,5})\s+reviews/i)?.[1] ??
+      null;
+
+    const offerSignals: Record<string, unknown> = {
+      ...(ldOffer ? { jsonLdOffer: ldOffer } : {}),
+      freeShippingHint: hasFreeShipping,
+      guaranteeHint: hasGuarantee,
+      subscriptionHint: hasSubscription,
+      bundleHint: hasBundle,
+      urgencyHint: urgency,
+      reviewCount: reviewCount ? Number(reviewCount) : undefined,
+    };
+
+    const htmlSignals: Record<string, unknown> = {
+      productPageUrl: url,
+      jsonLdBlocks: ld.length,
+      nextDataPresent: Boolean(extractJsonScript(html, "__NEXT_DATA__")),
+    };
+
+    return { offerSignals, htmlSignals };
+  } catch (e) {
+    if (e instanceof HttpError && e.isNotFound) return null;
+    return null;
+  }
+}
+
 async function fetchPrimaryProductsPage(
   domain: string,
   page: number,
@@ -264,6 +437,24 @@ async function fetchPrimaryProductsPage(
   return out;
 }
 
+async function fetchProductJs(domain: string, handle: string, options?: ShopifyPublicFetchOptions): Promise<ShopifyProductRawPayload | null> {
+  if (options?.mock) {
+    const p = MOCK_SHOPIFY_PRODUCTS.find((x) => x.handle === handle) ?? MOCK_SHOPIFY_PRODUCTS[0];
+    return p ? ({ ...p, handle } as ShopifyProductRawPayload) : null;
+  }
+  const url = `https://${domain}/products/${encodeURIComponent(handle)}.js`;
+  try {
+    const data = await fetchJsonPublic<unknown>(url, 20_000);
+    const arr = extractProductsArray({ product: data });
+    const node = arr[0];
+    const { product } = parseShopifyProductNode(node, { domain, index: 0 });
+    return product;
+  } catch (e) {
+    if (e instanceof HttpError && e.isNotFound) return null;
+    return null;
+  }
+}
+
 async function listCollectionHandles(
   domain: string,
   options?: ShopifyPublicFetchOptions
@@ -293,7 +484,29 @@ async function listCollectionHandles(
       throw e;
     }
   }
-  return [...new Set(handles)];
+  const uniq = [...new Set(handles)];
+  if (uniq.length) return uniq;
+
+  // Fallback: collections.json disabled → extract from homepage / collections/all HTML.
+  try {
+    const home = await fetchHtmlPublic(`https://${domain}/`, 18_000);
+    const all = await fetchHtmlPublic(`https://${domain}/collections/all`, 18_000);
+    const merged = `${home ?? ""}\n${all ?? ""}`;
+    const fromLinks = extractHandlesFromHtml(merged, "collections", 120);
+    if (fromLinks.length) return fromLinks;
+
+    // Next.js storefronts often include handles in __NEXT_DATA__.
+    const next = extractJsonScript(merged, "__NEXT_DATA__");
+    if (next) {
+      const str = JSON.stringify(next);
+      const fromNext = extractHandlesFromHtml(str, "collections", 120);
+      if (fromNext.length) return fromNext;
+    }
+  } catch {
+    /* ignore */
+  }
+
+  return [];
 }
 
 async function fetchCollectionProductsPageRaw(
@@ -339,7 +552,7 @@ export async function resolveShopifyProductsForSyncBatch(
   const { primaryPage, pageSize, mock, fanout } = args;
 
   if (!fanout) {
-    const primary = await fetchPrimaryProductsPage(domain, primaryPage, pageSize, { mock });
+    const primary = await fetchPrimaryProductsPage(domain, primaryPage, Math.min(250, Math.max(1, pageSize)), { mock });
     if (primary.length > 0) {
       logger.info("shopify.public.products_batch", {
         domain,
@@ -361,6 +574,37 @@ export async function resolveShopifyProductsForSyncBatch(
       });
       return { items: [], nextFanout: null, source: "primary_json" };
     }
+
+    // Fallback: products.json disabled → extract product handles from HTML and fetch product.js
+    try {
+      const html = await fetchHtmlPublic(`https://${domain}/`, 18_000);
+      const all = await fetchHtmlPublic(`https://${domain}/collections/all`, 18_000);
+      const merged = `${html ?? ""}\n${all ?? ""}`;
+      const handles = extractHandlesFromHtml(merged, "products", 36);
+      const out: ShopifyProductRawPayload[] = [];
+      const seen = new Set<string>();
+
+      for (const h of handles.slice(0, 28)) {
+        if (seen.has(h)) continue;
+        seen.add(h);
+        const p = await fetchProductJs(domain, h, { mock });
+        if (p) out.push(p);
+        if (out.length >= pageSize) break;
+      }
+
+      if (out.length) {
+        logger.info("shopify.public.products_batch", {
+          domain,
+          source: "html_product_js",
+          count: out.length,
+          handles: handles.length,
+        });
+        return { items: out, nextFanout: null, source: "primary_json" };
+      }
+    } catch {
+      /* ignore */
+    }
+
     const handles = await listCollectionHandles(domain, { mock });
     logger.info("shopify.public.collection_fanout_init", {
       domain,

@@ -25,7 +25,7 @@ export default function FilterSelect({
   const searchParams = useSearchParams();
 
   return (
-    <label className="flex items-center gap-2 text-xs text-gray-500">
+    <label className="flex items-center gap-2 text-xs text-muted">
       <span className="whitespace-nowrap">{label}</span>
       <select
         value={currentValue}
@@ -37,7 +37,7 @@ export default function FilterSelect({
           p.delete("page");
           router.push(`${pathname}?${p.toString()}`);
         }}
-        className="bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-gray-200 text-xs focus:outline-none focus:border-indigo-500 min-w-[8rem]"
+        className="bg-surface border border-border rounded px-2 py-1.5 text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] min-w-[8rem]"
       >
         <option value="">All</option>
         {options.map((o) => (

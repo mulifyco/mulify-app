@@ -15,6 +15,14 @@ export async function POST(
     // Job runs asynchronously — in Phase 1 this blocks until complete
     // Phase 2: push to a queue and return jobId immediately
     const result = await runIngestionJob(id, "manual");
+    if (result.ok === false) {
+      if (result.code === "DISCOVERY_ONLY_SOURCE") {
+        return NextResponse.json(result, { status: 422 });
+      }
+      if (result.code === "SOURCE_DISABLED" || result.code === "SOURCE_COOLDOWN") {
+        return NextResponse.json(result, { status: 423 });
+      }
+    }
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

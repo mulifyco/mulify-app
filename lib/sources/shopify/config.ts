@@ -126,8 +126,8 @@ export function resolveShopifyConfig(base: AdapterRuntimeConfigBase): ShopifyRes
   }
 
   const mockMode =
-    mockFromFlag ||
-    (process.env.NODE_ENV !== "production" && isOfflineFixtureDomainList(domainEntries));
+    // Safety: fixtures allowed only outside production.
+    (process.env.NODE_ENV !== "production" && (mockFromFlag || isOfflineFixtureDomainList(domainEntries)));
 
   const fetchStoreMeta = j.fetchStoreMeta !== false;
   const fetchProducts = j.fetchProducts !== false;

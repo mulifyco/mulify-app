@@ -3,6 +3,7 @@ interface Column<T> {
   header: string;
   render?: (row: T) => React.ReactNode;
   className?: string;
+  align?: "left" | "right" | "center";
 }
 
 interface DataTableProps<T> {
@@ -19,52 +20,55 @@ export default function DataTable<T extends { id: string }>({
   onRowClick,
 }: DataTableProps<T>) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-800">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="bg-gray-900 border-b border-gray-800">
-            {columns.map((col) => (
-              <th
-                key={col.key}
-                className={`px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${col.className ?? ""}`}
-              >
-                {col.header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-800/50">
-          {data.length === 0 ? (
-            <tr>
-              <td
-                colSpan={columns.length}
-                className="px-4 py-8 text-center text-gray-600"
-              >
-                {emptyMessage}
-              </td>
+    <div className="rounded-2xl border border-border bg-card/55 glass premium-ring overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border/60 bg-surface-2/35">
+              {columns.map((col) => (
+                <th
+                  key={col.key}
+                  className={`px-4 py-3 text-[10px] font-semibold text-muted-2 uppercase tracking-[0.18em] whitespace-nowrap ${
+                    col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left"
+                  } ${col.className ?? ""}`}
+                >
+                  {col.header}
+                </th>
+              ))}
             </tr>
-          ) : (
-            data.map((row) => (
-              <tr
-                key={row.id}
-                onClick={() => onRowClick?.(row)}
-                className={`bg-gray-950 hover:bg-gray-900/60 transition-colors ${onRowClick ? "cursor-pointer" : ""}`}
-              >
-                {columns.map((col) => (
-                  <td
-                    key={col.key}
-                    className={`px-4 py-3 text-gray-300 ${col.className ?? ""}`}
-                  >
-                    {col.render
-                      ? col.render(row)
-                      : String((row as Record<string, unknown>)[col.key] ?? "—")}
-                  </td>
-                ))}
+          </thead>
+          <tbody className="divide-y divide-border/50">
+            {data.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length} className="px-4 py-12 text-center text-muted-2 text-sm">
+                  {emptyMessage}
+                </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              data.map((row) => (
+                <tr
+                  key={row.id}
+                  onClick={() => onRowClick?.(row)}
+                  className={`hover:bg-surface-2/30 transition-colors ${onRowClick ? "cursor-pointer" : ""}`}
+                >
+                  {columns.map((col) => (
+                    <td
+                      key={col.key}
+                      className={`px-4 py-3 text-foreground ${
+                        col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : ""
+                      } ${col.className ?? ""}`}
+                    >
+                      {col.render
+                        ? col.render(row)
+                        : String((row as Record<string, unknown>)[col.key] ?? "—")}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

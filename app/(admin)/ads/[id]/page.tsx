@@ -45,7 +45,7 @@ export default async function AdDetailPage({ params }: Props) {
         title={ad.pageName ?? "Ad"}
         description={`${ad.externalId} · id ${ad.id}`}
         action={
-          <Link href="/ads" className="text-sm text-gray-400 hover:text-gray-200">
+          <Link href="/ads" className="text-sm text-muted hover:opacity-80">
             ← Back to Ads
           </Link>
         }
@@ -61,21 +61,21 @@ export default async function AdDetailPage({ params }: Props) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
         {[
           ["Activity", ad.isActive != null ? statusBadge(ad.isActive ? "ACTIVE" : "PAUSED") : "Unknown"],
-          ["Platforms", platformsLabel(ad.platforms as Platform[])],
+          ["Platforms", platformsLabel((ad.platforms ?? []) as Platform[])],
           ["First seen", timeAgo(ad.firstSeenAt)],
           ["Last seen", timeAgo(ad.lastSeenAt)],
         ].map(([label, value]) => (
-          <div key={String(label)} className="rounded-lg border border-gray-800 bg-gray-900/40 px-3 py-2">
-            <div className="text-[11px] text-gray-500 uppercase">{label}</div>
-            <div className="mt-1 text-gray-200 text-sm">{value}</div>
+          <div key={String(label)} className="rounded-lg border border-border bg-card px-3 py-2 shadow-sm">
+            <div className="text-[11px] text-muted uppercase">{label}</div>
+            <div className="mt-1 text-foreground text-sm">{value}</div>
           </div>
         ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-4">
-          <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-4">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3 tracking-wide">
+          <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+            <h3 className="text-xs font-semibold text-muted uppercase mb-3 tracking-wide">
               Advertiser / page
             </h3>
             <dl className="space-y-2 text-sm">
@@ -84,54 +84,54 @@ export default async function AdDetailPage({ params }: Props) {
                 ["Page ID", ad.pageId],
                 ["Page URL", ad.pageUrl],
                 ["External ID", ad.externalId],
-                ["Countries", ad.countries.join(", ") || "—"],
+                ["Countries", (ad.countries ?? []).join(", ") || "—"],
                 ["Currency", ad.currency],
                 ["Start", formatDate(ad.startDate)],
                 ["End", formatDate(ad.endDate)],
               ].map(([label, value]) => (
                 <div key={String(label)} className="flex gap-3">
-                  <dt className="w-28 text-gray-600 flex-none text-xs">{label}</dt>
-                  <dd className="text-gray-300 text-xs break-all">{value ?? "—"}</dd>
+                  <dt className="w-28 text-muted-2 flex-none text-xs">{label}</dt>
+                  <dd className="text-foreground text-xs break-all">{value ?? "—"}</dd>
                 </div>
               ))}
             </dl>
           </div>
 
-          <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-4">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3 tracking-wide">
+          <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+            <h3 className="text-xs font-semibold text-muted uppercase mb-3 tracking-wide">
               Creative text
             </h3>
             {ad.adTitle && (
               <div className="mb-3">
-                <div className="text-xs text-gray-600 mb-1">Title</div>
-                <div className="text-sm text-gray-200">{ad.adTitle}</div>
+                <div className="text-xs text-muted-2 mb-1">Title</div>
+                <div className="text-sm text-foreground">{ad.adTitle}</div>
               </div>
             )}
             {ad.adText && (
               <div className="mb-3">
-                <div className="text-xs text-gray-600 mb-1">Text</div>
-                <div className="text-sm text-gray-300 whitespace-pre-wrap">{ad.adText}</div>
+                <div className="text-xs text-muted-2 mb-1">Text</div>
+                <div className="text-sm text-foreground whitespace-pre-wrap">{ad.adText}</div>
               </div>
             )}
             {ad.adBody && (
               <div className="mb-3">
-                <div className="text-xs text-gray-600 mb-1">Body</div>
-                <div className="text-sm text-gray-400">{ad.adBody}</div>
+                <div className="text-xs text-muted-2 mb-1">Body</div>
+                <div className="text-sm text-muted">{ad.adBody}</div>
               </div>
             )}
             {!ad.adTitle && !ad.adText && !ad.adBody && (
-              <div className="text-gray-600 text-sm">No text fields</div>
+              <div className="text-muted-2 text-sm">No text fields</div>
             )}
           </div>
 
           {(ad.impressionsMin || ad.spendMin) && (
-            <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-4">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3">Reach estimates</h3>
+            <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+              <h3 className="text-xs font-semibold text-muted uppercase mb-3">Reach estimates</h3>
               <dl className="space-y-2 text-sm">
                 {ad.impressionsMin != null && (
                   <div className="flex gap-3">
-                    <dt className="w-28 text-gray-600">Impressions</dt>
-                    <dd className="text-gray-300">
+                    <dt className="w-28 text-muted-2">Impressions</dt>
+                    <dd className="text-foreground">
                       {ad.impressionsMin.toLocaleString()} –{" "}
                       {ad.impressionsMax?.toLocaleString() ?? "?"}
                     </dd>
@@ -139,8 +139,8 @@ export default async function AdDetailPage({ params }: Props) {
                 )}
                 {ad.spendMin != null && (
                   <div className="flex gap-3">
-                    <dt className="w-28 text-gray-600">Spend</dt>
-                    <dd className="text-gray-300">
+                    <dt className="w-28 text-muted-2">Spend</dt>
+                    <dd className="text-foreground">
                       {ad.currency} {ad.spendMin.toLocaleString()} –{" "}
                       {ad.spendMax?.toLocaleString() ?? "?"}
                     </dd>
@@ -152,14 +152,14 @@ export default async function AdDetailPage({ params }: Props) {
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-4">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3 tracking-wide">
+          <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+            <h3 className="text-xs font-semibold text-muted uppercase mb-3 tracking-wide">
               Destination URLs
             </h3>
             <dl className="space-y-2 text-sm">
               <div>
-                <dt className="text-xs text-gray-600 mb-1">Destination</dt>
-                <dd className="text-xs font-mono text-indigo-400 break-all">
+                <dt className="text-xs text-muted-2 mb-1">Destination</dt>
+                <dd className="text-xs font-mono text-indigo-600 break-all">
                   {ad.destinationUrl ? (
                     <a href={ad.destinationUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
                       {ad.destinationUrl}
@@ -170,10 +170,10 @@ export default async function AdDetailPage({ params }: Props) {
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-gray-600 mb-1">Canonical</dt>
-                <dd className="text-xs font-mono text-gray-400 break-all">
+                <dt className="text-xs text-muted-2 mb-1">Canonical</dt>
+                <dd className="text-xs font-mono text-muted break-all">
                   {ad.canonicalUrl ? (
-                    <a href={ad.canonicalUrl} target="_blank" rel="noopener noreferrer" className="hover:text-indigo-400">
+                    <a href={ad.canonicalUrl} target="_blank" rel="noopener noreferrer" className="hover:text-indigo-600">
                       {ad.canonicalUrl}
                     </a>
                   ) : (
@@ -185,10 +185,10 @@ export default async function AdDetailPage({ params }: Props) {
           </div>
 
           {score && (
-            <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-4">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3">Confidence</h3>
+            <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+              <h3 className="text-xs font-semibold text-muted uppercase mb-3">Confidence</h3>
               <div className="flex items-center gap-3 mb-4">
-                <div className="text-3xl font-bold text-white tabular-nums">
+                <div className="text-3xl font-bold text-foreground tabular-nums">
                   {(score.overallScore * 100).toFixed(0)}%
                 </div>
                 {statusBadge(score.level)}
@@ -204,18 +204,18 @@ export default async function AdDetailPage({ params }: Props) {
                   ] as const
                 ).map(([label, sc]) => (
                   <div key={label} className="flex items-center gap-2">
-                    <span className="w-24 text-gray-600">{label}</span>
-                    <div className="flex-1 bg-gray-800 rounded-full h-1.5">
+                    <span className="w-24 text-muted-2">{label}</span>
+                    <div className="flex-1 bg-surface-2 rounded-full h-1.5 border border-border">
                       <div
                         className="bg-indigo-500 h-1.5 rounded-full"
                         style={{ width: `${sc * 100}%` }}
                       />
                     </div>
-                    <span className="text-gray-500 w-8 text-right">{(sc * 100).toFixed(0)}%</span>
+                    <span className="text-muted w-8 text-right">{(sc * 100).toFixed(0)}%</span>
                   </div>
                 ))}
               </dl>
-              <div className="mt-3 text-xs text-gray-600">Sync confirmations: {score.syncCount}</div>
+              <div className="mt-3 text-xs text-muted-2">Sync confirmations: {score.syncCount}</div>
               {score.breakdown != null && (
                 <div className="mt-4">
                   <SectionHeader title="Breakdown (JSON)" />
@@ -249,29 +249,29 @@ export default async function AdDetailPage({ params }: Props) {
 
       <div>
         <SectionHeader title="Linked landing pages" description="Normalized graph" />
-        <div className="rounded-lg border border-gray-800 overflow-x-auto">
+        <div className="rounded-lg border border-border bg-card overflow-x-auto shadow-sm">
           <table className="w-full text-sm min-w-[480px]">
             <thead>
-              <tr className="bg-gray-900/80 border-b border-gray-800 text-left">
-                <th className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Domain</th>
-                <th className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">URL</th>
+              <tr className="bg-surface-2 border-b border-border text-left">
+                <th className="px-3 py-2 text-[11px] font-semibold text-muted uppercase">Domain</th>
+                <th className="px-3 py-2 text-[11px] font-semibold text-muted uppercase">URL</th>
                 <th className="px-3 py-2 w-14" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800/60">
-              {ad.landingPages.length === 0 ? (
+            <tbody className="divide-y divide-border">
+              {(ad.landingPages ?? []).length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-3 py-6 text-center text-gray-600 text-xs">
+                  <td colSpan={3} className="px-3 py-6 text-center text-muted-2 text-xs">
                     No landing page rows linked.
                   </td>
                 </tr>
               ) : (
-                ad.landingPages.map((lp: AdDetail["landingPages"][number]) => (
-                  <tr key={lp.id} className="hover:bg-gray-900/40">
-                    <td className="px-3 py-2 text-xs text-gray-400">{lp.domain}</td>
-                    <td className="px-3 py-2 text-xs font-mono text-gray-500 truncate max-w-md">{lp.url}</td>
+                (ad.landingPages ?? []).map((lp: AdDetail["landingPages"][number]) => (
+                  <tr key={lp.id} className="hover:bg-surface-2/70">
+                    <td className="px-3 py-2 text-xs text-muted">{lp.domain}</td>
+                    <td className="px-3 py-2 text-xs font-mono text-muted-2 truncate max-w-md">{lp.url}</td>
                     <td className="px-3 py-2">
-                      <Link href={`/landing-pages/${lp.id}`} className="text-xs text-indigo-400">
+                      <Link href={`/landing-pages/${lp.id}`} className="text-xs text-indigo-600 hover:opacity-80">
                         Open
                       </Link>
                     </td>
@@ -284,7 +284,7 @@ export default async function AdDetailPage({ params }: Props) {
       </div>
 
       <EntityLinksBlock
-        links={ad.entityLinks.map((l: AdDetail["entityLinks"][number]) => ({
+        links={(ad.entityLinks ?? []).map((l: AdDetail["entityLinks"][number]) => ({
           id: l.id,
           entityType: l.entityType,
           entityId: l.entityId,
@@ -295,55 +295,59 @@ export default async function AdDetailPage({ params }: Props) {
       <div>
         <SectionHeader title="Raw source references" />
         <ul className="space-y-2">
-          {ad.entityLinks.map((l: AdDetail["entityLinks"][number]) => (
+          {(ad.entityLinks ?? []).map((l: AdDetail["entityLinks"][number]) => (
             <li
               key={l.id}
-              className="flex flex-wrap items-center gap-2 text-xs rounded border border-gray-800 bg-gray-900/30 px-3 py-2"
+              className="flex flex-wrap items-center gap-2 text-xs rounded border border-border bg-card px-3 py-2 shadow-sm"
             >
-              <span className="font-mono text-gray-500">{l.rawRecord.externalId}</span>
-              {statusBadge(l.rawRecord.status)}
-              <Link href={`/raw-records/${l.rawRecord.id}`} className="text-indigo-400">
+              <span className="font-mono text-muted">{l.rawRecord?.externalId ?? "—"}</span>
+              {statusBadge(l.rawRecord?.status ?? "UNKNOWN")}
+              {l.rawRecord?.id ? (
+                <Link href={`/raw-records/${l.rawRecord.id}`} className="text-indigo-600 hover:opacity-80">
                 Inspect payload
-              </Link>
+                </Link>
+              ) : (
+                <span className="text-muted-2">—</span>
+              )}
             </li>
           ))}
-          {ad.entityLinks.length === 0 && (
-            <p className="text-sm text-gray-600">No entity links to raw records.</p>
+          {(ad.entityLinks ?? []).length === 0 && (
+            <p className="text-sm text-muted-2">No entity links to raw records.</p>
           )}
         </ul>
       </div>
 
       <div>
         <SectionHeader title="Related ingestion jobs" description="Via raw record lineage" />
-        <div className="rounded-lg border border-gray-800 overflow-x-auto">
+        <div className="rounded-lg border border-border bg-card overflow-x-auto shadow-sm">
           <table className="w-full text-sm min-w-[560px]">
             <thead>
-              <tr className="bg-gray-900/80 border-b border-gray-800 text-left">
-                <th className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Job</th>
-                <th className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Source</th>
-                <th className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Status</th>
-                <th className="px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase">Started</th>
+              <tr className="bg-surface-2 border-b border-border text-left">
+                <th className="px-3 py-2 text-[11px] font-semibold text-muted uppercase">Job</th>
+                <th className="px-3 py-2 text-[11px] font-semibold text-muted uppercase">Source</th>
+                <th className="px-3 py-2 text-[11px] font-semibold text-muted uppercase">Status</th>
+                <th className="px-3 py-2 text-[11px] font-semibold text-muted uppercase">Started</th>
                 <th className="px-3 py-2 w-12" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800/60">
-              {relatedJobs.length === 0 ? (
+            <tbody className="divide-y divide-border">
+              {(relatedJobs ?? []).length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-3 py-6 text-center text-gray-600 text-xs">
+                  <td colSpan={5} className="px-3 py-6 text-center text-muted-2 text-xs">
                     No jobs linked.
                   </td>
                 </tr>
               ) : (
-                relatedJobs.map((j: RelatedIngestionJobRow) => (
-                  <tr key={j.id} className="hover:bg-gray-900/40">
-                    <td className="px-3 py-2 font-mono text-[11px] text-gray-500">{j.id.slice(0, 12)}…</td>
-                    <td className="px-3 py-2 text-xs text-gray-400">{j.source.name}</td>
+                (relatedJobs ?? []).map((j: RelatedIngestionJobRow) => (
+                  <tr key={j.id} className="hover:bg-surface-2/70">
+                    <td className="px-3 py-2 font-mono text-[11px] text-muted">{j.id.slice(0, 12)}…</td>
+                    <td className="px-3 py-2 text-xs text-muted">{j.source.name}</td>
                     <td className="px-3 py-2">{statusBadge(j.status)}</td>
-                    <td className="px-3 py-2 text-xs text-gray-500">
+                    <td className="px-3 py-2 text-xs text-muted">
                       {j.startedAt ? formatDate(j.startedAt) : formatDate(j.createdAt)}
                     </td>
                     <td className="px-3 py-2">
-                      <Link href={`/jobs/${j.id}`} className="text-xs text-indigo-400">
+                      <Link href={`/jobs/${j.id}`} className="text-xs text-indigo-600 hover:opacity-80">
                         Open
                       </Link>
                     </td>
