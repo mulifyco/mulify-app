@@ -7,7 +7,7 @@ import ExplainDrawer from "@/components/internal/ExplainDrawer";
 import CopilotDrawer from "@/components/internal/CopilotDrawer";
 import PersonaAnalyzerDrawer from "@/components/internal/PersonaAnalyzerDrawer";
 import HookIntelligenceDrawer from "@/components/internal/HookIntelligenceDrawer";
-import type { Platform } from "@prisma/client";
+import type { Platform } from "@/types";
 import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
 
 export const dynamic = "force-dynamic";
