@@ -60,8 +60,6 @@ export default function HookIntelligenceDrawer({
   useEffect(() => {
     if (!open) return;
     let mounted = true;
-    setLoading(true);
-    setErr(null);
     fetch(`/api/hook-intelligence?entityType=${encodeURIComponent(entityType)}&entityId=${encodeURIComponent(entityId)}`)
       .then(async (r) => {
         const j = (await r.json().catch(() => ({}))) as { data?: HookIntelPayload; error?: string };

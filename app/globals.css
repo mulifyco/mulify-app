@@ -1,9 +1,5 @@
 @import "tailwindcss";
 
-/* ─── Dark variant: data-theme attribute (overrides default media-query dark) ─── */
-/* All dark: Tailwind classes now respond to data-theme="dark" on <html>           */
-@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
-
 /* ─── Premium dark tokens (Minea / Linear / Stripe tier) ─── */
 :root {
   --background: #090c18;        /* Deepest navy */

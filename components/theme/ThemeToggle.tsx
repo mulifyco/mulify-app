@@ -26,17 +26,13 @@ export default function ThemeToggle() {
   const [mode, setMode] = useState<ThemeMode>("system");
 
   useEffect(() => {
-    // Sync initial mode from ThemeProvider API
-    const api = (window as any).__mulifyTheme as { mode: ThemeMode } | undefined;
+    const api = (window as any).__mulifyTheme as { mode: ThemeMode; setMode: (m: ThemeMode) => void } | undefined;
     if (api?.mode) setMode(api.mode);
-
-    // Listen for mode changes dispatched by ThemeProvider (replaces polling)
-    const onThemeChange = (e: Event) => {
-      const detail = (e as CustomEvent<{ mode: ThemeMode }>).detail;
-      if (detail?.mode) setMode(detail.mode);
-    };
-    window.addEventListener("mulify:theme-change", onThemeChange);
-    return () => window.removeEventListener("mulify:theme-change", onThemeChange);
+    const t = setInterval(() => {
+      const api2 = (window as any).__mulifyTheme as { mode: ThemeMode } | undefined;
+      if (api2?.mode) setMode(api2.mode);
+    }, 1000);
+    return () => clearInterval(t);
   }, []);
 
   return (

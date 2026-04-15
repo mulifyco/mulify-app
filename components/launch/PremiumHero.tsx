@@ -194,7 +194,7 @@ export default function PremiumHero() {
                     {TRENDING.map(({ label, width, color }) => (
                       <div key={label} className="flex items-center gap-3">
                         <div className="text-[12px] text-foreground flex-1">{label}</div>
-                        <div className="h-1.5 w-24 rounded-full bg-border overflow-hidden shrink-0">
+                        <div className="h-1.5 w-24 rounded-full bg-white/6 overflow-hidden shrink-0">
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width }}

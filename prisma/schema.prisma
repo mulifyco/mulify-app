@@ -195,6 +195,25 @@ enum WorkspaceRole {
   VIEWER
 }
 
+enum IntegrationProvider {
+  FACEBOOK
+  TIKTOK
+  SHOPIFY
+}
+
+enum IntegrationStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+enum IntegrationEntityType {
+  CAMPAIGN
+  ADSET
+  AD
+  INSIGHT
+}
+
 enum InviteStatus {
   PENDING
   ACCEPTED
@@ -762,9 +781,85 @@ model Workspace {
   gtmLeads GtmLead[]
   gtmActivities GtmActivity[]
   reviewQueueItems ReviewQueueItem[]
+  integrations IntegrationConnection[]
+  integrationSyncRuns IntegrationSyncRun[]
+  integrationRecords  IntegrationRecord[]
 
   @@index([ownerUserId])
   @@index([billingPlan])
+}
+
+model IntegrationConnection {
+  id          String              @id @default(cuid())
+  workspaceId String
+  workspace   Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  provider    IntegrationProvider
+  status      IntegrationStatus   @default(DISCONNECTED)
+  /** Encrypted JSON blob (base64) containing credentials + config. */
+  encryptedConfig String?
+  /** Non-secret metadata safe to show in UI (e.g. adAccountId). */
+  publicConfig    Json?
+  lastSyncedAt    DateTime?
+  lastSuccessAt   DateTime?
+  lastErrorAt     DateTime?
+  lastError       String?
+  errorCount      Int             @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  records  IntegrationRecord[]
+  syncRuns IntegrationSyncRun[]
+
+  @@unique([workspaceId, provider])
+  @@index([workspaceId])
+  @@index([provider])
+  @@index([status])
+}
+
+model IntegrationSyncRun {
+  id            String                @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  connectionId  String
+  connection    IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  status        JobStatus             @default(PENDING)
+  triggeredBy   String                @default("manual")
+  startedAt     DateTime?
+  completedAt   DateTime?
+  durationMs    Int?
+  totalFetched  Int                   @default(0)
+  totalUpserted Int                   @default(0)
+  error         String?
+  metadata      Json?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@index([workspaceId, createdAt])
+  @@index([connectionId, createdAt])
+  @@index([status])
+}
+
+model IntegrationRecord {
+  id            String                 @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  connectionId  String
+  connection    IntegrationConnection  @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  provider      IntegrationProvider
+  entityType    IntegrationEntityType
+  externalId    String
+  payload       Json
+  payloadHash   String
+  firstSeenAt   DateTime               @default(now())
+  lastSeenAt    DateTime               @default(now())
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  @@unique([connectionId, entityType, externalId])
+  @@index([workspaceId, provider, entityType])
+  @@index([externalId])
+  @@index([payloadHash])
+  @@index([lastSeenAt])
 }
 
 model ProductEvent {

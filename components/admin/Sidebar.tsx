@@ -42,6 +42,7 @@ function glyph(label: string): string {
   if (l.includes("review")) return "⊞";
   if (l.includes("filter")) return "⧉";
   if (l.includes("team")) return "⊙";
+  if (l.includes("api")) return "⌘";
   if (l.includes("pricing")) return "◆";
   if (l.includes("disco")) return "◉";
   return "•";
@@ -188,6 +189,7 @@ const SETTINGS_NAV: NavItem[] = [
   { label: "Settings", href: "/settings" },
   { label: "Team", href: "/settings/team" },
   { label: "Billing", href: "/settings/billing" },
+  { label: "API's", href: "/settings/apis" },
   { label: "Pricing", href: "/pricing" },
 ];
 

@@ -66,8 +66,8 @@ export default function TimelineHistoryPanel({
               const px = Math.max(4, Math.round((Math.abs(v) / max) * 56));
               return (
                 <div
-                  key={`bar-${i}`}
-                  className="flex-1 min-w-[3px] max-w-[8px] rounded-sm bg-primary/60"
+                  key={i}
+                  className="flex-1 min-w-[3px] max-w-[8px] rounded-sm bg-indigo-500/70 dark:bg-indigo-400/60"
                   style={{ height: `${px}px` }}
                 />
               );
@@ -87,7 +87,7 @@ export default function TimelineHistoryPanel({
               </thead>
               <tbody className="divide-y divide-border/60">
                 {points.slice(-8).map((p, i) => (
-                  <tr key={`row-${i}`}>
+                  <tr key={i}>
                     <td className="py-1 pr-2 text-muted whitespace-nowrap">
                       {String(p.snapshotDate ?? "").slice(0, 10)}
                     </td>

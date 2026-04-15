@@ -16,6 +16,7 @@ import { evaluateWatchlistsJob } from "@/src/workers/evaluateWatchlists";
 import { createHistoricalSnapshotsJob } from "@/src/workers/createHistoricalSnapshots";
 import { customerSuccessJob } from "@/src/workers/customerSuccess";
 import { tenantBackfillJob } from "@/src/workers/tenantBackfill";
+import { integrationSyncRunsJob } from "@/src/workers/integrationSyncRuns";
 import { sweepAllStuckJobs } from "@/server/services/stuck-job-sweep.service";
 import { assertProdEnvOrThrow, getEnvChecks } from "@/lib/env";
 
@@ -174,6 +175,13 @@ async function main() {
     const tb = await runJob("tenant_backfill", async () => tenantBackfillJob() as unknown as Record<string, unknown>);
     if (tb.ok) console.info("[worker] tenant_backfill ok", tb.payload);
     else console.warn("[worker] tenant_backfill failed (non-fatal)", tb.error);
+
+    const isr = await runJob(
+      "integration_sync_runs",
+      async () => integrationSyncRunsJob() as unknown as Record<string, unknown>
+    );
+    if (isr.ok) console.info("[worker] integration_sync_runs ok", isr.payload);
+    else console.warn("[worker] integration_sync_runs failed (non-fatal)", isr.error);
 
     const tickFinishedAt = new Date();
     const [newStores, newProducts, newCreatives, newClusters] = await Promise.all([

@@ -49,8 +49,6 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
         setMode(next);
         setStoredTheme(next);
         applyTheme(next);
-        // Notify ThemeToggle and any other listeners without polling
-        window.dispatchEvent(new CustomEvent("mulify:theme-change", { detail: { mode: next } }));
       },
     }),
     [mode]

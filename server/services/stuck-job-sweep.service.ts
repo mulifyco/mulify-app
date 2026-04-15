@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { msFromEnv } from "@/lib/sources/reliability";
+import { sweepStuckIntegrationSyncRuns } from "@/server/services/integrations/stuck-integration-sync-run-sweep.service";
 
 const STALE_MSG = "stale_running_job_swept";
 
@@ -75,10 +76,15 @@ export async function sweepStuckScraperJobs(): Promise<number> {
 export async function sweepAllStuckJobs(): Promise<{
   ingestionJobsRecovered: number;
   scraperJobsRecovered: number;
+  integrationSyncRunsRecovered: number;
 }> {
-  const [ingestionJobsRecovered, scraperJobsRecovered] = await Promise.all([
+  const [ingestionJobsRecovered, scraperJobsRecovered, integrationSyncRunsRecovered] = await Promise.all([
     sweepStuckIngestionJobs(),
     sweepStuckScraperJobs(),
+    sweepStuckIntegrationSyncRuns().catch((e) => {
+      logger.warn("[stuck-job-sweep] integration sync run sweep failed (non-fatal)", { error: String(e) });
+      return 0;
+    }),
   ]);
-  return { ingestionJobsRecovered, scraperJobsRecovered };
+  return { ingestionJobsRecovered, scraperJobsRecovered, integrationSyncRunsRecovered };
 }

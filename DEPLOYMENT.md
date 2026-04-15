@@ -91,6 +91,42 @@ In Vercel:
 
 ---
 
+## Background Worker (Required for queued sync)
+
+This app uses a **separate worker process** for queue-based integration sync runs.
+
+- **Web process**: serves the Next.js app
+- **Worker process**: executes queued sync runs and periodic maintenance
+
+### Start worker
+
+```bash
+npm run worker
+```
+
+If the worker is not running in production:
+- UI can enqueue sync runs (they will show as **Queued**)
+- runs will remain queued and **never execute**
+
+### Integration queue health (admin-only)
+
+Use `GET /api/ops/integration-queue-health` to inspect:
+- pending/running counts
+- recent failures
+- oldest pending age
+- last worker tick timestamp
+
+### Recommended env vars for integrations
+
+```
+INTEGRATIONS_ENCRYPTION_KEY      = base64-encoded 32 bytes (recommended)
+WORKER_INTERVAL_MS              = 60000
+INTEGRATION_SYNC_MAX_PER_TICK   = 3
+INTEGRATION_SYNC_RUN_STUCK_MS   = 900000
+```
+
+---
+
 ## Monitoring
 
 **Phase 1**: Basic monitoring via:
