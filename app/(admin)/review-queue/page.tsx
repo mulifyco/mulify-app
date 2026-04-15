@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import PageHeader from "@/components/ui/PageHeader";
-import prisma from "@/lib/prisma";
+import { reviewQueueItemDb } from "@/lib/prisma-review-queue-item-delegate";
 import SearchBar from "@/components/ui/SearchBar";
 import FilterSelect from "@/components/internal/FilterSelect";
 import Pagination from "@/components/ui/Pagination";
@@ -91,16 +91,29 @@ export default async function ReviewQueuePage({
     };
 
     const [items, cnt] = await Promise.all([
-      prisma.reviewQueueItem.findMany({
+      reviewQueueItemDb().findMany({
         where,
         orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
         skip,
         take: pageSize,
       }),
-      prisma.reviewQueueItem.count({ where }),
+      reviewQueueItemDb().count({ where }),
     ]);
 
-    rows = items.map((r) => ({
+    type RqDbRow = {
+      id: string;
+      type: string;
+      status: string;
+      priority: number;
+      title: string;
+      reason: string;
+      entityType: string | null;
+      entityId: string | null;
+      sourceId: string | null;
+      metadata: unknown;
+      createdAt: Date;
+    };
+    rows = (items as RqDbRow[]).map((r) => ({
       id: r.id,
       type: String(r.type),
       status: String(r.status) as ReviewQueueRow["status"],

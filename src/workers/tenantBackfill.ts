@@ -1,6 +1,7 @@
 import prisma from "@/src/lib/prisma";
 import { SAVED_BOARD_FILTER_ALERT_LOG_DELEGATE_KEY, updateManySavedBoardFilterAlertLogs } from "@/lib/saved-board-filter-alert-log";
 import { watchlistDb } from "@/lib/prisma-watchlist-delegate";
+import { reviewQueueItemDb } from "@/lib/prisma-review-queue-item-delegate";
 
 function intFromEnv(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -73,7 +74,13 @@ export async function tenantBackfillJob(): Promise<{
     } as never).then((r) => r.count).catch(() => 0)
   );
   bump("report", await prisma.report.updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as any).then(r => r.count).catch(() => 0));
-  bump("reviewQueueItem", await prisma.reviewQueueItem.updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as any).then(r => r.count).catch(() => 0));
+  bump(
+    "reviewQueueItem",
+    await reviewQueueItemDb()
+      .updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId } })
+      .then((r) => r.count)
+      .catch(() => 0),
+  );
 
   // Lead/GTM: assign to fallback if missing.
   bump("lead", await prisma.lead.updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as any).then(r => r.count).catch(() => 0));

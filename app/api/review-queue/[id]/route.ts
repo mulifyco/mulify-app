@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ProductEventType } from "@/lib/analytics/product-event-types";
-import prisma from "@/lib/prisma";
+import { reviewQueueItemDb } from "@/lib/prisma-review-queue-item-delegate";
 import { auth } from "@/lib/auth";
 import { patchReviewQueueItem } from "@/server/services/review-queue.service";
 import { trackProductEventFromSession } from "@/server/services/product-analytics.service";
@@ -32,7 +32,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const priority =
     body.priority != null ? Math.max(0, Math.min(100, Number(body.priority))) : undefined;
 
-  const exists = await prisma.reviewQueueItem
+  const exists = await reviewQueueItemDb()
     .findFirst({ where: { id, workspaceId }, select: { id: true } })
     .catch(() => null);
   if (!exists) {

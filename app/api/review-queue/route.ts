@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { reviewQueueItemDb } from "@/lib/prisma-review-queue-item-delegate";
 import { auth } from "@/lib/auth";
 import { getRequiredWorkspace } from "@/server/authz/workspace-scope";
 
@@ -41,13 +41,13 @@ export async function GET(req: Request) {
   };
 
   const [items, total] = await Promise.all([
-    prisma.reviewQueueItem.findMany({
+    reviewQueueItemDb().findMany({
       where,
       orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
       skip,
       take: pageSize,
     }),
-    prisma.reviewQueueItem.count({ where }),
+    reviewQueueItemDb().count({ where }),
   ]);
 
   return NextResponse.json({ data: items, total, page, pageSize });

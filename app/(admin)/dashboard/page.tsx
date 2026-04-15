@@ -30,6 +30,7 @@ import RetentionPanel from "@/components/customer-success/RetentionPanel";
 import { getRequiredWorkspace } from "@/server/authz/workspace-scope";
 import AdminPageShell from "@/components/admin/AdminPageShell";
 import { SAVED_BOARD_FILTER_ALERT_LOG_DELEGATE_KEY } from "@/lib/saved-board-filter-alert-log";
+import { reviewQueueItemDb } from "@/lib/prisma-review-queue-item-delegate";
 
 export const dynamic = "force-dynamic";
 
@@ -101,6 +102,8 @@ type WatchlistAlertRow = {
 };
 
 type DiscoveryCandidateRow = { id: string; domain: string; discoveryScore: number; rawEvidenceCount: number };
+
+type ReviewQueueSummaryRow = { id: string; title: string; reason: string; priority: number };
 
 async function safeFindMany<T = unknown>(model: string, args: Record<string, unknown>): Promise<T[]> {
   try {
@@ -175,23 +178,21 @@ export default async function DashboardPage() {
       take: 8,
     }),
     canAccessFeature(plan, "REVIEW_QUEUE")
-      ? prisma
-          .$transaction([
-            prisma.reviewQueueItem.count({ where: { status: { in: ["OPEN", "IN_REVIEW"] } } }),
-            prisma.reviewQueueItem.findMany({
-              where: { status: { in: ["OPEN", "IN_REVIEW"] }, priority: { gte: 85 } },
-              orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
-              take: 5,
-              select: {
-                id: true,
-                title: true,
-                reason: true,
-                priority: true,
-              },
-            }),
-          ])
-          .catch(() => [0, []] as const)
-      : Promise.resolve([0, []] as const),
+      ? Promise.all([
+          reviewQueueItemDb().count({ where: { status: { in: ["OPEN", "IN_REVIEW"] } } }),
+          reviewQueueItemDb().findMany({
+            where: { status: { in: ["OPEN", "IN_REVIEW"] }, priority: { gte: 85 } },
+            orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
+            take: 5,
+            select: {
+              id: true,
+              title: true,
+              reason: true,
+              priority: true,
+            },
+          }) as Promise<ReviewQueueSummaryRow[]>,
+        ]).catch((): [number, ReviewQueueSummaryRow[]] => [0, []])
+      : Promise.resolve<[number, ReviewQueueSummaryRow[]]>([0, []]),
     prisma.source
       .count({
         where: {
@@ -238,8 +239,8 @@ export default async function DashboardPage() {
   const avgHealth: number | string = ops?.summary.avgSourceHealthScore ?? "—";
   const stalled = ops?.summary.stalledSourcesCount ?? 0;
   const failedJobs24h = ops?.summary.failedJobs24h ?? s.failedJobs24h;
-  const openReviewCount = reviewSummary?.[0] ?? 0;
-  const highPriorityReviewItems = reviewSummary?.[1] ?? [];
+  const openReviewCount = reviewSummary[0] ?? 0;
+  const highPriorityReviewItems: ReviewQueueSummaryRow[] = reviewSummary[1] ?? [];
 
   const hottest = (() => {
     if (rts[0]) return { entityType: "PRODUCT_CLUSTER", entityId: String(rts[0].clusterId), label: "Ready to Scale" };
@@ -384,7 +385,7 @@ export default async function DashboardPage() {
           </div>
           {highPriorityReviewItems.length ? (
             <div className="space-y-2">
-              {highPriorityReviewItems.map((it: { id: string; title: string; reason: string; priority: number }) => (
+              {highPriorityReviewItems.map((it) => (
                 <div key={it.id} className="rounded border border-border px-3 py-2">
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm font-medium text-foreground truncate">{it.title}</div>

@@ -1,4 +1,14 @@
 import prisma from "@/lib/prisma";
+import { reviewQueueItemDb } from "@/lib/prisma-review-queue-item-delegate";
+
+/** Minimal shape returned from review queue delegate (typed for callers). */
+export type ReviewQueueItemRow = {
+  id: string;
+  priority: number;
+  title: string;
+  reason: string;
+  metadata?: unknown;
+};
 
 export type ReviewQueueKey = {
   type: string;
@@ -15,9 +25,9 @@ async function resolveFallbackWorkspaceId(): Promise<string | null> {
   return ws?.id ?? null;
 }
 
-export async function findOpenReviewQueueItem(key: ReviewQueueKey) {
+export async function findOpenReviewQueueItem(key: ReviewQueueKey): Promise<ReviewQueueItemRow | null> {
   if (key.dedupeKey) {
-    return prisma.reviewQueueItem.findFirst({
+    return (await reviewQueueItemDb().findFirst({
       where: {
         type: key.type as never,
         status: { in: ["OPEN", "IN_REVIEW"] as never },
@@ -25,10 +35,10 @@ export async function findOpenReviewQueueItem(key: ReviewQueueKey) {
         metadata: { path: ["dedupeKey"], equals: key.dedupeKey },
       } as never,
       orderBy: { createdAt: "desc" },
-    });
+    })) as ReviewQueueItemRow | null;
   }
 
-  return prisma.reviewQueueItem.findFirst({
+  return (await reviewQueueItemDb().findFirst({
     where: {
       type: key.type as never,
       status: { in: ["OPEN", "IN_REVIEW"] as never },
@@ -38,7 +48,7 @@ export async function findOpenReviewQueueItem(key: ReviewQueueKey) {
       sourceId: key.sourceId ?? null,
     } as never,
     orderBy: { createdAt: "desc" },
-  });
+  })) as ReviewQueueItemRow | null;
 }
 
 export async function openReviewQueueItem(input: {
@@ -53,7 +63,7 @@ export async function openReviewQueueItem(input: {
   metadata?: any;
   /** Stable key for dedupe (stored into metadata.dedupeKey). */
   dedupeKey?: string;
-}) {
+}): Promise<ReviewQueueItemRow> {
   const baseMeta =
     input.metadata && typeof input.metadata === "object" && !Array.isArray(input.metadata)
       ? { ...(input.metadata as Record<string, unknown>) }
@@ -76,7 +86,7 @@ export async function openReviewQueueItem(input: {
   });
 
   if (existing) {
-    return prisma.reviewQueueItem.update({
+    return (await reviewQueueItemDb().update({
       where: { id: existing.id },
       data: {
         priority: input.priority ?? existing.priority,
@@ -85,10 +95,10 @@ export async function openReviewQueueItem(input: {
         metadata: meta ?? existing.metadata,
         updatedAt: new Date(),
       } as never,
-    });
+    })) as ReviewQueueItemRow;
   }
 
-  return prisma.reviewQueueItem.create({
+  return (await reviewQueueItemDb().create({
     data: {
       workspaceId,
       type: input.type as never,
@@ -101,7 +111,7 @@ export async function openReviewQueueItem(input: {
       sourceId: input.sourceId ?? null,
       metadata: meta ?? undefined,
     } as never,
-  });
+  })) as ReviewQueueItemRow;
 }
 
 export async function patchReviewQueueItem(
@@ -111,11 +121,11 @@ export async function patchReviewQueueItem(
     priority?: number;
     resolutionNote?: string | null;
   }
-) {
+): Promise<ReviewQueueItemRow> {
   const status = patch.status;
   const reviewedAt = status === "RESOLVED" || status === "DISMISSED" ? new Date() : undefined;
 
-  return prisma.reviewQueueItem.update({
+  return (await reviewQueueItemDb().update({
     where: { id },
     data: {
       ...(patch.priority != null ? { priority: patch.priority } : {}),
@@ -123,5 +133,5 @@ export async function patchReviewQueueItem(
       ...(status ? { status: status as never } : {}),
       ...(reviewedAt ? { reviewedAt } : {}),
     } as never,
-  });
+  })) as ReviewQueueItemRow;
 }

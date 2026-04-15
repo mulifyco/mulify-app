@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
+import { reviewQueueItemDb } from "@/lib/prisma-review-queue-item-delegate";
 
 function intFromEnv(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -349,7 +350,7 @@ export async function buildOpsSourceHealth(): Promise<{
     sourceReliabilityAlertsOpen,
   ] = await Promise.all([
     prisma.rawRecord.count({ where: { lastDuplicateIngestAt: { gte: since24h } } }).catch(() => 0),
-    prisma.reviewQueueItem
+    reviewQueueItemDb()
       .count({
         where: {
           createdAt: { gte: since24h },
@@ -363,7 +364,7 @@ export async function buildOpsSourceHealth(): Promise<{
         },
       })
       .catch(() => 0),
-    prisma.reviewQueueItem
+    reviewQueueItemDb()
       .count({
         where: {
           status: { in: ["OPEN", "IN_REVIEW"] },
@@ -371,12 +372,12 @@ export async function buildOpsSourceHealth(): Promise<{
         },
       })
       .catch(() => 0),
-    prisma.reviewQueueItem
+    reviewQueueItemDb()
       .count({
         where: { status: { in: ["OPEN", "IN_REVIEW"] }, type: "ENTITY_LINK_REVIEW" },
       })
       .catch(() => 0),
-    prisma.reviewQueueItem
+    reviewQueueItemDb()
       .count({
         where: {
           status: { in: ["OPEN", "IN_REVIEW"] },
@@ -410,7 +411,7 @@ export async function buildOpsSourceHealth(): Promise<{
         _avg: { consecutiveEmptyRuns: true },
       })
       .catch(() => ({ _avg: { consecutiveEmptyRuns: null as number | null } })),
-    prisma.reviewQueueItem
+    reviewQueueItemDb()
       .count({
         where: { status: { in: ["OPEN", "IN_REVIEW"] }, type: "SOURCE_RELIABILITY_ALERT" },
       })
