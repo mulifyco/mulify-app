@@ -19,7 +19,16 @@ const boardAlertFindManyArgs = {
   },
 } as const;
 
-const boardAlertFindMany = () => prisma.boardAlertLog.findMany(boardAlertFindManyArgs);
+const boardAlertDelegate:
+  | {
+      findMany: typeof prisma.boardAlertLog.findMany;
+      count: typeof prisma.boardAlertLog.count;
+    }
+  | any =
+  // Some deployments may have different model naming; prefer BoardAlertLog, then fall back.
+  (prisma as any).boardAlertLog ?? (prisma as any).boardAlert ?? (prisma as any).alertLog;
+
+const boardAlertFindMany = () => boardAlertDelegate.findMany(boardAlertFindManyArgs);
 
 type BoardAlertRow = Awaited<ReturnType<typeof boardAlertFindMany>>[number];
 
@@ -63,13 +72,13 @@ export default async function AlertsPage({
 
   try {
     const [rows, cnt] = await Promise.all([
-      prisma.boardAlertLog.findMany({
+      boardAlertDelegate.findMany({
         ...boardAlertFindManyArgs,
         orderBy: { createdAt: "desc" },
         skip,
         take: pageSize,
       }),
-      prisma.boardAlertLog.count(),
+      boardAlertDelegate.count(),
     ]);
     items = rows;
     total = cnt;
