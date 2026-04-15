@@ -26,6 +26,7 @@ export default async function CollectionDetailPage({ params }: Props) {
 
   const score = col.confidenceScores[0];
   const winningClusters = await ProductClusterRepository.listForCollection(id, 10);
+  type WinningCluster = (typeof winningClusters)[number];
 
   return (
     <div>
@@ -176,7 +177,7 @@ export default async function CollectionDetailPage({ params }: Props) {
                   </td>
                 </tr>
               ) : (
-                winningClusters.map((c) => (
+                winningClusters.map((c: WinningCluster) => (
                   <tr key={c.id} className="hover:bg-surface-2/70">
                     <td className="px-3 py-2">
                       <div className="text-foreground truncate max-w-lg">{c.title ?? "—"}</div>

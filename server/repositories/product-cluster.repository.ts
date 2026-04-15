@@ -1,3 +1,4 @@
+import type { ProductCluster } from "@prisma/client";
 import prisma from "@/lib/prisma";
 
 export const ProductClusterRepository = {
@@ -46,7 +47,7 @@ export const ProductClusterRepository = {
     });
   },
 
-  async listForCollection(collectionId: string, take = 12) {
+  async listForCollection(collectionId: string, take = 12): Promise<ProductCluster[]> {
     const productIds = await prisma.collectionProduct.findMany({
       where: { collectionId },
       select: { productId: true },
