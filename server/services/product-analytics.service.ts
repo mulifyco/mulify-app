@@ -1,9 +1,10 @@
 import type { Session } from "next-auth";
-import { Prisma, ProductEventType } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import { ProductEventType, type ProductEventTypeValue } from "@/lib/analytics/product-event-types";
 import { prisma } from "@/lib/prisma";
 
 export type TrackProductEventInput = {
-  eventType: ProductEventType;
+  eventType: ProductEventTypeValue;
   userId?: string | null;
   workspaceId?: string | null;
   sessionId?: string | null;

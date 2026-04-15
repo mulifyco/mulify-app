@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ProductEventType } from "@prisma/client";
+import { ProductEventType } from "@/lib/analytics/product-event-types";
 import { auth } from "@/lib/auth";
 import { renderReportPdf } from "@/server/services/report-pdf.service";
 import { canAccessFeature, getUserPlan, paywallResponse } from "@/lib/billing/access";

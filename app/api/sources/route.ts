@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ProductEventType } from "@prisma/client";
+import { ProductEventType } from "@/lib/analytics/product-event-types";
 import { auth } from "@/lib/auth";
 import { SourceRepository } from "@/server/repositories/source.repository";
 import { z } from "zod";

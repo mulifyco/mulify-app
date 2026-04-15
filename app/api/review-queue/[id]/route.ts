@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ProductEventType } from "@prisma/client";
+import { ProductEventType } from "@/lib/analytics/product-event-types";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { patchReviewQueueItem } from "@/server/services/review-queue.service";

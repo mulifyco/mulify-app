@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
-import { ProductEventType } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { isProductEventType, type ProductEventTypeValue } from "@/lib/analytics/product-event-types";
 import { prisma } from "@/lib/prisma";
@@ -80,7 +79,7 @@ export async function POST(req: NextRequest) {
   }
 
   await trackProductEvent({
-    eventType: eventTypeRaw as ProductEventType,
+    eventType: eventTypeRaw,
     userId: user?.id ?? null,
     workspaceId,
     sessionId: sessionId ?? null,

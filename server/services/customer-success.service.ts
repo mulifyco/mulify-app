@@ -1,5 +1,6 @@
 import type { CustomerDigest, CustomerHealthSnapshot, CustomerNudge, CustomerNudgeStatus } from "@prisma/client";
-import { CustomerDigestType, ProductEventType } from "@prisma/client";
+import { CustomerDigestType } from "@prisma/client";
+import { ProductEventType } from "@/lib/analytics/product-event-types";
 import prisma from "@/lib/prisma";
 import { watchlistDb } from "@/lib/prisma-watchlist-delegate";
 import { countSavedBoardFilterAlertLogs } from "@/lib/saved-board-filter-alert-log";

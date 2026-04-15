@@ -19,7 +19,7 @@ import ExplainDrawer from "@/components/internal/ExplainDrawer";
 import ActionMenu from "@/components/internal/ActionMenu";
 import CreateReportButton from "@/components/internal/CreateReportButton";
 import OnboardingHelperStrip from "@/components/internal/OnboardingHelperStrip";
-import { ProductEventType } from "@prisma/client";
+import { ProductEventType } from "@/lib/analytics/product-event-types";
 import { auth } from "@/lib/auth";
 import { canAccessFeature, getUserPlan } from "@/lib/billing/access";
 import { trackProductEventFromSession } from "@/server/services/product-analytics.service";

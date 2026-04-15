@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ProductEventType } from "@prisma/client";
+import { ProductEventType } from "@/lib/analytics/product-event-types";
 import { auth } from "@/lib/auth";
 import { executeAutoAction, type AutoActionType, type AutoEntityType } from "@/server/services/auto-actions.service";
 import { trackProductEventFromSession } from "@/server/services/product-analytics.service";

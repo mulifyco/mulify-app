@@ -30,6 +30,11 @@ export const PRODUCT_EVENT_TYPE_VALUES = [
 
 export type ProductEventTypeValue = (typeof PRODUCT_EVENT_TYPE_VALUES)[number];
 
+/** App-side mirror of Prisma `ProductEventType` (use instead of importing from `@prisma/client`). */
+export const ProductEventType = Object.fromEntries(
+  PRODUCT_EVENT_TYPE_VALUES.map((v) => [v, v] as const),
+) as { readonly [K in ProductEventTypeValue]: K };
+
 const SET = new Set<string>(PRODUCT_EVENT_TYPE_VALUES);
 
 export function isProductEventType(v: string): v is ProductEventTypeValue {

@@ -12,7 +12,7 @@ import AutoActionsBar from "@/components/internal/AutoActionsBar";
 import AddAsLeadButton from "@/components/internal/AddAsLeadButton";
 import PaywallPanel from "@/components/internal/PaywallPanel";
 import EmptyState from "@/components/internal/EmptyState";
-import { ProductEventType } from "@prisma/client";
+import { ProductEventType } from "@/lib/analytics/product-event-types";
 import { auth } from "@/lib/auth";
 import { canAccessFeature, getUserPlan } from "@/lib/billing/access";
 import { trackProductEventFromSession } from "@/server/services/product-analytics.service";

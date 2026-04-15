@@ -6,7 +6,8 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { CredentialsSignin } from "next-auth";
-import { Plan, ProductEventType } from "@prisma/client";
+import { Plan } from "@prisma/client";
+import { ProductEventType } from "@/lib/analytics/product-event-types";
 import prisma from "@/lib/prisma";
 
 /** Must match prisma/seed.ts demo admin. */
