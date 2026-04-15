@@ -9,14 +9,19 @@ import EmptyState from "@/components/internal/EmptyState";
 import PaywallPanel from "@/components/internal/PaywallPanel";
 import { auth } from "@/lib/auth";
 import { canAccessFeature, getUserPlan } from "@/lib/billing/access";
-import type { Prisma } from "@prisma/client";
 import { trackBoardViewServer } from "@/lib/analytics/track-board-server";
 
 export const dynamic = "force-dynamic";
 
-type BoardAlertRow = Prisma.BoardAlertLogGetPayload<{
-  include: { savedFilter: { select: { id: true; name: true } } };
-}>;
+const boardAlertFindManyArgs = {
+  include: {
+    savedFilter: { select: { id: true, name: true } },
+  },
+} as const;
+
+const boardAlertFindMany = () => prisma.boardAlertLog.findMany(boardAlertFindManyArgs);
+
+type BoardAlertRow = Awaited<ReturnType<typeof boardAlertFindMany>>[number];
 
 function severityVariant(s: string): "green" | "yellow" | "red" | "default" {
   if (s === "HIGH") return "red";
@@ -59,12 +64,10 @@ export default async function AlertsPage({
   try {
     const [rows, cnt] = await Promise.all([
       prisma.boardAlertLog.findMany({
+        ...boardAlertFindManyArgs,
         orderBy: { createdAt: "desc" },
         skip,
         take: pageSize,
-        include: {
-          savedFilter: { select: { id: true, name: true } },
-        },
       }),
       prisma.boardAlertLog.count(),
     ]);
