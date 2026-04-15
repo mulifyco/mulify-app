@@ -9,11 +9,9 @@ import PaywallPanel from "@/components/internal/PaywallPanel";
 import { auth } from "@/lib/auth";
 import { canAccessFeature, getUserPlan } from "@/lib/billing/access";
 import { trackBoardViewServer } from "@/lib/analytics/track-board-server";
-import { getSavedBoardFilterAlertLogRows, loadSavedBoardFilterAlertLogPage } from "@/lib/saved-board-filter-alert-log";
+import { loadSavedBoardFilterAlertLogPage, type SavedBoardFilterAlertLogRow } from "@/lib/saved-board-filter-alert-log";
 
 export const dynamic = "force-dynamic";
-
-type SavedBoardFilterAlertLogRow = Awaited<ReturnType<typeof getSavedBoardFilterAlertLogRows>>[number];
 
 function severityVariant(s: string): "green" | "yellow" | "red" | "default" {
   if (s === "HIGH") return "red";

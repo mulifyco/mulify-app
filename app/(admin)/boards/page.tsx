@@ -14,7 +14,7 @@ import { timeAgo } from "@/lib/date";
 import { trendBadgeVariant } from "@/lib/admin/formatters";
 import Link from "next/link";
 import { SavedBoardFilterRepository } from "@/server/repositories/saved-board-filter.repository";
-import prisma from "@/lib/prisma";
+import { countSavedBoardFilterAlertLogs } from "@/lib/saved-board-filter-alert-log";
 import CreateReportButton from "@/components/internal/CreateReportButton";
 import EmptyState from "@/components/internal/EmptyState";
 import LoadDemoWorkspaceButton from "@/components/launch/LoadDemoWorkspaceButton";
@@ -59,14 +59,12 @@ export default async function BoardsDashboardPage() {
 
   const weekAgo = new Date();
   weekAgo.setDate(weekAgo.getDate() - 7);
-  const [activeAlertsCount, highAlertsCount] = await prisma
-    .$transaction([
-      prisma.savedBoardFilterAlertLog.count({ where: { createdAt: { gte: weekAgo }, ...(workspaceId ? { workspaceId } : {}) } }),
-      prisma.savedBoardFilterAlertLog.count({
-        where: { createdAt: { gte: weekAgo }, severity: "HIGH", ...(workspaceId ? { workspaceId } : {}) },
-      }),
-    ])
-    .catch(() => [0, 0]);
+  const [activeAlertsCount, highAlertsCount] = await Promise.all([
+    countSavedBoardFilterAlertLogs({ where: { createdAt: { gte: weekAgo }, ...(workspaceId ? { workspaceId } : {}) } }).catch(() => 0),
+    countSavedBoardFilterAlertLogs({
+      where: { createdAt: { gte: weekAgo }, severity: "HIGH", ...(workspaceId ? { workspaceId } : {}) },
+    }).catch(() => 0),
+  ]);
 
   const [rts, ml, em, sat, cw] = await Promise.all([
     tryList(() => getCachedReadyToScaleBoard(PREVIEW_TAKE, MIN_SCORE)),

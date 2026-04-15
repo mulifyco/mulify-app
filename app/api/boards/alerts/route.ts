@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { jsonWithReadCache } from "@/lib/http/read-cache";
-import prisma from "@/lib/prisma";
+import { countSavedBoardFilterAlertLogs, findManySavedBoardFilterAlertLogs } from "@/lib/saved-board-filter-alert-log";
 import { withRouteTiming } from "@/lib/perf/route-timing";
 
 export async function GET(req: NextRequest) {
@@ -24,14 +24,14 @@ export async function GET(req: NextRequest) {
 
   const [items, total] = await withRouteTiming("/api/boards/alerts", () =>
     Promise.all([
-      prisma.savedBoardFilterAlertLog.findMany({
+      findManySavedBoardFilterAlertLogs({
         where: where as never,
         orderBy: { createdAt: "desc" },
         skip,
         take: pageSize,
         include: { savedFilter: { select: { id: true, name: true } } },
       }),
-      prisma.savedBoardFilterAlertLog.count({ where: where as never }),
+      countSavedBoardFilterAlertLogs({ where: where as never }),
     ])
   );
 

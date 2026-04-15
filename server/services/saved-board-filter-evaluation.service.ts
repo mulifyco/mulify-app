@@ -6,6 +6,7 @@ import { SaturatedProductsBoardRepository } from "@/server/repositories/saturate
 import { CreativeWinnersBoardRepository } from "@/server/repositories/creative-winners-board.repository";
 import { SavedBoardFilterRepository } from "@/server/repositories/saved-board-filter.repository";
 import prisma from "@/lib/prisma";
+import { createSavedBoardFilterAlertLogOnTx, findFirstSavedBoardFilterAlertLogOnTx } from "@/lib/saved-board-filter-alert-log";
 
 /** Best-effort pool size for matching (alerts will use dedicated queries later). */
 const EVAL_POOL = Number.parseInt(process.env.SAVED_BOARD_FILTER_EVAL_POOL ?? "2500", 10) || 2500;
@@ -149,7 +150,7 @@ export async function evaluateAndPersistSavedBoardFilter(params: {
     }
 
     for (const r of rules) {
-      const existing = await tx.savedBoardFilterAlertLog.findFirst({
+      const existing = await findFirstSavedBoardFilterAlertLogOnTx(tx, {
         where: {
           workspaceId,
           savedFilterId: filter.id,
@@ -160,7 +161,7 @@ export async function evaluateAndPersistSavedBoardFilter(params: {
       });
       if (existing) continue;
 
-      await tx.savedBoardFilterAlertLog.create({
+      await createSavedBoardFilterAlertLogOnTx(tx, {
         data: {
           workspaceId,
           savedFilterId: filter.id,
