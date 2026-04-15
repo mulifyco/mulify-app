@@ -1,6 +1,7 @@
 import type { CustomerDigest, CustomerHealthSnapshot, CustomerNudge, CustomerNudgeStatus } from "@prisma/client";
 import { CustomerDigestType, ProductEventType } from "@prisma/client";
 import prisma from "@/lib/prisma";
+import { watchlistDb } from "@/lib/prisma-watchlist-delegate";
 import { countSavedBoardFilterAlertLogs } from "@/lib/saved-board-filter-alert-log";
 
 function daysAgo(days: number): Date {
@@ -88,7 +89,7 @@ export async function computeCustomerHealth(params: {
       prisma.productEvent.count({
         where: { userId, workspaceId, eventType: ProductEventType.REPORT_CREATE, createdAt: { gte: d7 } },
       }),
-      prisma.watchlist.count({ where: { workspaceId } }),
+      watchlistDb().count({ where: { workspaceId } }),
       prisma.savedBoardFilter.count({ where: { workspaceId } }),
       Promise.all([
         prisma.watchlistAlertLog.count({ where: { workspaceId, createdAt: { gte: d7 } } }),
@@ -265,7 +266,7 @@ export async function generateCustomerNudges(params: {
 
   const [health, watchlistsCount, savedFiltersCount, reports7d, compare7d, alerts7d, userRow] = await Promise.all([
     computeCustomerHealth({ userId, workspaceId }),
-    prisma.watchlist.count({ where: { workspaceId } }),
+    watchlistDb().count({ where: { workspaceId } }),
     prisma.savedBoardFilter.count({ where: { workspaceId } }),
     prisma.productEvent.count({ where: { userId, workspaceId, eventType: ProductEventType.REPORT_CREATE, createdAt: { gte: d7 } } }),
     prisma.productEvent.count({ where: { userId, workspaceId, eventType: ProductEventType.COMPARE_RUN, createdAt: { gte: d7 } } }),

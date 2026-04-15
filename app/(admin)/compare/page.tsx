@@ -1,6 +1,6 @@
 import PageHeader from "@/components/ui/PageHeader";
 import CompareClient from "./CompareClient";
-import prisma from "@/lib/prisma";
+import { watchlistDb } from "@/lib/prisma-watchlist-delegate";
 import CreateReportButton from "@/components/internal/CreateReportButton";
 import PaywallPanel from "@/components/internal/PaywallPanel";
 import { auth } from "@/lib/auth";
@@ -31,10 +31,10 @@ export default async function ComparePage({
   // Watchlist shortcut: /compare?watchlistId=...
   if (params.watchlistId && initialDomains.length === 0) {
     try {
-      const wl = await prisma.watchlist.findUnique({
+      const wl = (await watchlistDb().findUnique({
         where: { id: params.watchlistId },
         select: { stores: { select: { domain: true } } },
-      });
+      })) as { stores?: Array<{ domain: string }> } | null;
       if (wl?.stores?.length) {
         initialDomains = wl.stores.map((s) => s.domain).slice(0, 20);
       }

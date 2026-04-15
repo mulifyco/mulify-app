@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { watchlistDb } from "@/lib/prisma-watchlist-delegate";
 import { getDashboardStats } from "@/server/services/dashboard.service";
 import { buildOpsSourceHealth } from "@/server/services/ops-dashboard.service";
 import { compareStores } from "@/server/services/store-compare.service";
@@ -114,7 +115,9 @@ export async function generateReportSummary(input: CreateReportInput): Promise<{
 
   if (input.type === "WATCHLIST_SNAPSHOT") {
     const id = input.context.watchlistId;
-    const wlMeta = await prisma.watchlist.findUnique({ where: { id }, select: { workspaceId: true } }).catch(() => null);
+    const wlMeta = (await watchlistDb()
+      .findUnique({ where: { id }, select: { workspaceId: true } })
+      .catch(() => null)) as { workspaceId: string | null } | null;
     const workspaceId = wlMeta?.workspaceId ?? null;
     const [wl, summary, compare, recentAlerts] = await Promise.all([
       workspaceId ? WatchlistRepository.findById(workspaceId, id).catch(() => null) : Promise.resolve(null),

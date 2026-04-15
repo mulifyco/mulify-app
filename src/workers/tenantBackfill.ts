@@ -1,5 +1,6 @@
 import prisma from "@/src/lib/prisma";
 import { SAVED_BOARD_FILTER_ALERT_LOG_DELEGATE_KEY, updateManySavedBoardFilterAlertLogs } from "@/lib/saved-board-filter-alert-log";
+import { watchlistDb } from "@/lib/prisma-watchlist-delegate";
 
 function intFromEnv(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -52,7 +53,13 @@ export async function tenantBackfillJob(): Promise<{
   const bump = (k: string, n: number) => (updated[k] = (updated[k] ?? 0) + n);
 
   // Tables without userId: assign to fallback workspace.
-  bump("watchlist", await prisma.watchlist.updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as any).then(r => r.count).catch(() => 0));
+  bump(
+    "watchlist",
+    await watchlistDb()
+      .updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as never)
+      .then((r) => r.count)
+      .catch(() => 0)
+  );
   bump("watchlistRun", await prisma.watchlistRun.updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as any).then(r => r.count).catch(() => 0));
   bump("watchlistAlertLog", await prisma.watchlistAlertLog.updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as any).then(r => r.count).catch(() => 0));
   bump("savedBoardFilter", await prisma.savedBoardFilter.updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as any).then(r => r.count).catch(() => 0));

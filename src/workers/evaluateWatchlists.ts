@@ -1,4 +1,5 @@
 import prisma from "@/src/lib/prisma";
+import { watchlistDb } from "@/lib/prisma-watchlist-delegate";
 import { evaluateWatchlistAndPersist } from "@/server/services/watchlist-evaluation.service";
 
 function intFromEnv(name: string, fallback: number): number {
@@ -32,11 +33,11 @@ export async function evaluateWatchlistsJob(): Promise<{
 }> {
   const batch = intFromEnv("WATCHLIST_EVAL_BATCH", 10);
 
-  const watchlists = await prisma.watchlist.findMany({
+  const watchlists = (await watchlistDb().findMany({
     orderBy: [{ updatedAt: "desc" }],
     take: batch,
     select: { id: true, name: true },
-  });
+  })) as Array<{ id: string; name: string }>;
 
   let watchlistsEvaluated = 0;
   let alertsWritten = 0;

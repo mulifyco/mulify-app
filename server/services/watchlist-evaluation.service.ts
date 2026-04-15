@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { watchlistDb } from "@/lib/prisma-watchlist-delegate";
 import type { AlertSeverity, WatchlistAlertType } from "@prisma/client";
 
 function intFromEnv(name: string, fallback: number): number {
@@ -27,10 +28,10 @@ export type WatchlistSnapshot = {
 };
 
 async function snapshotWatchlist(watchlistId: string): Promise<WatchlistSnapshot> {
-  const wl = await prisma.watchlist.findUnique({
+  const wl = (await watchlistDb().findUnique({
     where: { id: watchlistId },
     include: { stores: true },
-  });
+  })) as { stores: Array<{ domain: string }> } | null;
   if (!wl) throw new Error("Watchlist not found");
 
   const domains = wl.stores.map((s) => s.domain);
@@ -112,7 +113,9 @@ export async function evaluateWatchlistAndPersist(params: {
   triggeredBy?: string;
 }): Promise<{ snapshot: WatchlistSnapshot; alertsWritten: number }> {
   const watchlistId = params.watchlistId;
-  const wl = await prisma.watchlist.findUnique({ where: { id: watchlistId }, select: { workspaceId: true } });
+  const wl = (await watchlistDb().findUnique({ where: { id: watchlistId }, select: { workspaceId: true } })) as {
+    workspaceId: string | null;
+  } | null;
   const workspaceId = wl?.workspaceId ?? null;
 
   const trendSpikeThreshold = floatFromEnv("WATCHLIST_TREND_SPIKE", 8);

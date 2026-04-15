@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { watchlistDb } from "@/lib/prisma-watchlist-delegate";
 import { WatchlistRepository } from "@/server/repositories/watchlist.repository";
 import { generateReportSummary, type CreateReportInput } from "@/server/services/report.service";
 import { openReviewQueueItem } from "@/server/services/review-queue.service";
@@ -44,11 +45,11 @@ function minutesAgo(m: number): Date {
 }
 
 async function ensureDefaultWatchlist(workspaceId: string): Promise<{ id: string; name: string }> {
-  const existing = await prisma.watchlist.findFirst({
+  const existing = (await watchlistDb().findFirst({
     where: { workspaceId },
     orderBy: { updatedAt: "desc" },
     select: { id: true, name: true },
-  });
+  })) as { id: string; name: string } | null;
   if (existing) return existing;
   const created = await WatchlistRepository.create({
     workspaceId,
@@ -175,10 +176,10 @@ async function resolveDomainsForWatchlistAlert(alertId: string): Promise<string[
 
   // fallback: use domains in watchlist
   if (!a?.watchlistId) return [];
-  const wl = await prisma.watchlist.findUnique({
+  const wl = (await watchlistDb().findUnique({
     where: { id: a.watchlistId },
     select: { stores: { select: { domain: true }, take: 10 } },
-  });
+  })) as { stores?: Array<{ domain: string }> } | null;
   const ds = (wl?.stores ?? []).map((s) => s.domain).filter(Boolean);
   return [...new Set(ds)].slice(0, 10);
 }

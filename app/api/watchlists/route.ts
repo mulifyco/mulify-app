@@ -3,7 +3,7 @@ import { ProductEventType } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { jsonWithReadCache } from "@/lib/http/read-cache";
 import { WatchlistRepository } from "@/server/repositories/watchlist.repository";
-import prisma from "@/lib/prisma";
+import { watchlistDb } from "@/lib/prisma-watchlist-delegate";
 import { canAccessFeature, getPlanLimits, getUserPlan, paywallResponse } from "@/lib/billing/access";
 import { trackPaywallHitFromSession, trackProductEventFromSession } from "@/server/services/product-analytics.service";
 import { getRequiredWorkspace } from "@/server/authz/workspace-scope";
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
   const limits = getPlanLimits(plan);
   if (limits.maxWatchlists > 0) {
-    const count = await prisma.watchlist.count({ where: { workspaceId } }).catch(() => 0);
+    const count = await watchlistDb().count({ where: { workspaceId } }).catch(() => 0);
     if (count >= limits.maxWatchlists) {
       return NextResponse.json(
         { error: `Watchlist limit reached (max ${limits.maxWatchlists}).`, code: "LIMIT", plan },
