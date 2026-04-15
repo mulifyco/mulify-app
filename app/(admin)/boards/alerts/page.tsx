@@ -10,6 +10,7 @@ import PaywallPanel from "@/components/internal/PaywallPanel";
 import { auth } from "@/lib/auth";
 import { canAccessFeature, getUserPlan } from "@/lib/billing/access";
 import { trackBoardViewServer } from "@/lib/analytics/track-board-server";
+import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -17,20 +18,9 @@ const boardAlertFindManyArgs = {
   include: {
     savedFilter: { select: { id: true, name: true } },
   },
-} as const;
+} as const satisfies Prisma.BoardAlertLogFindManyArgs;
 
-const boardAlertDelegate:
-  | {
-      findMany: typeof prisma.boardAlertLog.findMany;
-      count: typeof prisma.boardAlertLog.count;
-    }
-  | any =
-  // Some deployments may have different model naming; prefer BoardAlertLog, then fall back.
-  (prisma as any).boardAlertLog ?? (prisma as any).boardAlert ?? (prisma as any).alertLog;
-
-const boardAlertFindMany = () => boardAlertDelegate.findMany(boardAlertFindManyArgs);
-
-type BoardAlertRow = Awaited<ReturnType<typeof boardAlertFindMany>>[number];
+type BoardAlertRow = Prisma.BoardAlertLogGetPayload<typeof boardAlertFindManyArgs>;
 
 function severityVariant(s: string): "green" | "yellow" | "red" | "default" {
   if (s === "HIGH") return "red";
@@ -72,13 +62,13 @@ export default async function AlertsPage({
 
   try {
     const [rows, cnt] = await Promise.all([
-      boardAlertDelegate.findMany({
+      prisma.boardAlertLog.findMany({
         ...boardAlertFindManyArgs,
         orderBy: { createdAt: "desc" },
         skip,
         take: pageSize,
       }),
-      boardAlertDelegate.count(),
+      prisma.boardAlertLog.count(),
     ]);
     items = rows;
     total = cnt;
