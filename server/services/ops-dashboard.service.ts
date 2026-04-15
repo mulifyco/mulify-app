@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
 import { reviewQueueItemDb } from "@/lib/prisma-review-queue-item-delegate";
+import { sourceDb } from "@/lib/prisma-source-delegate";
 
 function intFromEnv(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -38,6 +39,25 @@ export type OpsSourceHealthRow = {
   healthScore: number;
   band: HealthBand;
   reasons: string[];
+  reliabilityStatus: string;
+  consecutiveFailures: number;
+  consecutiveEmptyRuns: number;
+  cooldownUntil: Date | null;
+  disabledReason: string | null;
+  lastHealthyAt: Date | null;
+};
+
+/** Row from `sourceDb().findMany` before health scoring (matches ops dashboard select). */
+type OpsSourceListRow = {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  lastSyncAt: Date | null;
+  lastSuccessAt: Date | null;
+  errorCount: number;
+  lastError: string | null;
+  createdAt: Date;
   reliabilityStatus: string;
   consecutiveFailures: number;
   consecutiveEmptyRuns: number;
@@ -238,7 +258,7 @@ export async function buildOpsSourceHealth(): Promise<{
         where: { type: "autonomous_discovery", status: "SUCCESS", finishedAt: { gte: since24h } },
       })
       .catch(() => 0),
-    prisma.source
+    sourceDb()
       .count({ where: { type: "SHOPIFY_DOMAIN", createdAt: { gte: since24h }, name: { startsWith: "AutoDiscovered:" } } })
       .catch(() => 0),
     discoveryCandidateModel?.count
@@ -250,8 +270,8 @@ export async function buildOpsSourceHealth(): Promise<{
     prisma.store.count({ where: { OR: [{ createdAt: { gte: since24h } }, { updatedAt: { gte: since24h } }] } }).catch(() => 0),
     creativeClusterDb().count({ where: { createdAt: { gte: since24h } } }).catch(() => 0),
     prisma.productCluster.count({ where: { createdAt: { gte: since24h } } }).catch(() => 0),
-    prisma.source.count({ where: { lastSuccessAt: { gte: since6h } } }).catch(() => 0),
-    prisma.source
+    sourceDb().count({ where: { lastSuccessAt: { gte: since6h } } }).catch(() => 0),
+    sourceDb()
       .count({
         where: { type: "SHOPIFY_DOMAIN", createdAt: { gte: since24h }, name: { startsWith: "FeedbackSeed:" } },
       })
@@ -259,7 +279,7 @@ export async function buildOpsSourceHealth(): Promise<{
     prisma.discoveryCandidate
       .count({ where: { createdAt: { gte: since24h }, sourceTypeHint: { in: ["COMPARE_RIVAL", "COMPARE"] } } })
       .catch(() => 0),
-    prisma.source
+    sourceDb()
       .count({
         where: {
           type: "SHOPIFY_DOMAIN",
@@ -386,10 +406,10 @@ export async function buildOpsSourceHealth(): Promise<{
         },
       })
       .catch(() => 0),
-    prisma.source.count({ where: { reliabilityStatus: "HEALTHY" } }).catch(() => 0),
-    prisma.source.count({ where: { reliabilityStatus: "DEGRADED" } }).catch(() => 0),
-    prisma.source.count({ where: { reliabilityStatus: "COOLING_DOWN" } }).catch(() => 0),
-    prisma.source.count({ where: { reliabilityStatus: "DISABLED" } }).catch(() => 0),
+    sourceDb().count({ where: { reliabilityStatus: "HEALTHY" } }).catch(() => 0),
+    sourceDb().count({ where: { reliabilityStatus: "DEGRADED" } }).catch(() => 0),
+    sourceDb().count({ where: { reliabilityStatus: "COOLING_DOWN" } }).catch(() => 0),
+    sourceDb().count({ where: { reliabilityStatus: "DISABLED" } }).catch(() => 0),
     prisma.ingestionJob
       .count({
         where: {
@@ -398,14 +418,14 @@ export async function buildOpsSourceHealth(): Promise<{
         },
       })
       .catch(() => 0),
-    prisma.source.count({ where: { consecutiveEmptyRuns: { gte: 5 } } }).catch(() => 0),
-    prisma.source
+    sourceDb().count({ where: { consecutiveEmptyRuns: { gte: 5 } } }).catch(() => 0),
+    sourceDb()
       .aggregate({
         where: { status: "ACTIVE" },
         _avg: { consecutiveFailures: true },
       })
       .catch(() => ({ _avg: { consecutiveFailures: null as number | null } })),
-    prisma.source
+    sourceDb()
       .aggregate({
         where: { status: "ACTIVE" },
         _avg: { consecutiveEmptyRuns: true },
@@ -417,6 +437,13 @@ export async function buildOpsSourceHealth(): Promise<{
       })
       .catch(() => 0),
   ]);
+
+  const reliabilityFailureAvgRow = reliabilityFailureAvg as {
+    _avg: { consecutiveFailures: number | null };
+  };
+  const reliabilityEmptyAvgRow = reliabilityEmptyAvg as {
+    _avg: { consecutiveEmptyRuns: number | null };
+  };
 
   const [newAdVariations24h, creativeBurstsDetected24h, repeatedHooks24h, lineageRichStores24h, platformCrossoverCreatives24h] =
     await (async () => {
@@ -499,8 +526,8 @@ export async function buildOpsSourceHealth(): Promise<{
       .findFirst({ where: { type: "refresh_sources", status: "SUCCESS" }, orderBy: { finishedAt: "desc" }, select: { finishedAt: true } })
       .then((r) => r?.finishedAt ?? null)
       .catch(() => null),
-    prisma.source.count({ where: { lastSuccessAt: { gte: new Date(Date.now() - 60 * 60 * 1000) } } }).catch(() => 0),
-    prisma.source
+    sourceDb().count({ where: { lastSuccessAt: { gte: new Date(Date.now() - 60 * 60 * 1000) } } }).catch(() => 0),
+    sourceDb()
       .count({
         where: {
           status: { in: ["ACTIVE", "PENDING"] },
@@ -523,7 +550,7 @@ export async function buildOpsSourceHealth(): Promise<{
   );
 
   // Sources + counts (avoid N+1)
-  const sources = await prisma.source.findMany({
+  const sources = (await sourceDb().findMany({
     select: {
       id: true,
       name: true,
@@ -543,7 +570,7 @@ export async function buildOpsSourceHealth(): Promise<{
     },
     orderBy: { updatedAt: "desc" },
     take: 2500,
-  });
+  })) as OpsSourceListRow[];
 
   const sourceIds = sources.map((s) => s.id);
 
@@ -710,7 +737,7 @@ export async function buildOpsSourceHealth(): Promise<{
     })
     .catch(() => []);
 
-  const promotedSources = await prisma.source.findMany({
+  const promotedSources = (await sourceDb().findMany({
     where: {
       type: "SHOPIFY_DOMAIN",
       createdAt: { gte: weekAgo },
@@ -719,7 +746,7 @@ export async function buildOpsSourceHealth(): Promise<{
     orderBy: { createdAt: "desc" },
     take: 25,
     select: { id: true, name: true, domain: true, type: true, createdAt: true },
-  });
+  })) as Array<{ id: string; name: string; domain: string | null; type: string; createdAt: Date }>;
 
   const worstSources = [...scored].sort((a, b) => a.healthScore - b.healthScore).slice(0, 12);
   const bestSources = [...scored].sort((a, b) => b.healthScore - a.healthScore).slice(0, 12);
@@ -765,8 +792,8 @@ export async function buildOpsSourceHealth(): Promise<{
       reliabilityDisabled,
       staleRunningJobsRecovered24h,
       sourcesInEmptyStreak5Plus,
-      avgConsecutiveFailures: Math.round((reliabilityFailureAvg._avg.consecutiveFailures ?? 0) * 10) / 10,
-      avgConsecutiveEmptyRuns: Math.round((reliabilityEmptyAvg._avg.consecutiveEmptyRuns ?? 0) * 10) / 10,
+      avgConsecutiveFailures: Math.round((reliabilityFailureAvgRow._avg.consecutiveFailures ?? 0) * 10) / 10,
+      avgConsecutiveEmptyRuns: Math.round((reliabilityEmptyAvgRow._avg.consecutiveEmptyRuns ?? 0) * 10) / 10,
       sourceReliabilityAlertsOpen,
       newAdVariations24h,
       creativeBurstsDetected24h,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { sourceDb } from "@/lib/prisma-source-delegate";
 import { SourceRepository } from "@/server/repositories/source.repository";
 import type { SourceType as PrismaSourceType } from "@prisma/client";
 
@@ -20,10 +21,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const domain = candidate.domain;
-  const existing = await prisma.source.findFirst({
+  const existing = (await sourceDb().findFirst({
     where: { type: "SHOPIFY_DOMAIN" as PrismaSourceType, domain } as any,
     select: { id: true },
-  });
+  })) as { id: string } | null;
 
   let createdSourceId: string | null = null;
   if (!existing) {

@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
+import { sourceDb } from "@/lib/prisma-source-delegate";
 
 export type LaunchProofStats = {
   shopCount: number;
@@ -27,7 +28,7 @@ export async function getLaunchProofStats(): Promise<LaunchProofStats> {
     prisma.ad.count().catch(() => 0),
     prisma.productCluster.count().catch(() => 0),
     creativeClusterDb().count().catch(() => 0),
-    prisma.source.count().catch(() => 0),
+    sourceDb().count().catch(() => 0),
     prisma.productClusterSnapshot
       .count({ where: { snapshotDate: { gte: dayAgo } } })
       .catch(() => 0),

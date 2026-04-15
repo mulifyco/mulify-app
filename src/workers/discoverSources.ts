@@ -10,6 +10,7 @@ import {
 } from "@/lib/intelligence/discovery-coverage";
 import { loadDiscoveryScoringContext, scoreContextForDomain } from "@/server/services/discovery-scoring-context.service";
 import { openReviewQueueItem } from "@/server/services/review-queue.service";
+import { sourceDb } from "@/lib/prisma-source-delegate";
 import { discoveryReliabilityScorePenalty } from "@/lib/sources/reliability";
 
 type DiscoveryInputSourceType = "KEYWORD" | "META_PAGE" | "TIKTOK_PAGE";
@@ -76,10 +77,10 @@ async function writeSyncLog(
 async function buildExistingShopifyDomainSet(): Promise<Set<string>> {
   const out = new Set<string>();
 
-  const domainSources = await prisma.source.findMany({
+  const domainSources = (await sourceDb().findMany({
     where: { type: "SHOPIFY_DOMAIN" },
     select: { domain: true, config: true },
-  });
+  })) as Array<{ domain: string | null; config: unknown }>;
 
   for (const s of domainSources) {
     const d = typeof s.domain === "string" ? canonicalDiscoveryStoreDomain(s.domain) : null;
@@ -91,10 +92,10 @@ async function buildExistingShopifyDomainSet(): Promise<Set<string>> {
     }
   }
 
-  const storefront = await prisma.source.findMany({
+  const storefront = (await sourceDb().findMany({
     where: { type: "SHOPIFY_STOREFRONT" },
     select: { config: true },
-  });
+  })) as Array<{ config: unknown }>;
 
   for (const s of storefront) {
     if (!s.config || typeof s.config !== "object") continue;
@@ -301,13 +302,13 @@ async function createDiscoveredShopifyDomainSource(params: {
   discoveryReason: string;
   priority?: number;
 }): Promise<"created" | "duplicate_skipped"> {
-  const existing = await prisma.source.findFirst({
+  const existing = (await sourceDb().findFirst({
     where: { type: "SHOPIFY_DOMAIN", domain: params.domain },
     select: { id: true },
-  });
+  })) as { id: string } | null;
   if (existing) return "duplicate_skipped";
 
-  await prisma.source.create({
+  await sourceDb().create({
     data: {
       name: `Discovered: ${params.domain}`,
       type: "SHOPIFY_DOMAIN",
@@ -374,7 +375,7 @@ export async function discoverSourcesJob(): Promise<{
 
   const dailyMaxPromotions = intFromEnv("DISCOVERY_DAILY_MAX_NEW_SOURCES", 48);
   const day = utcDayStart();
-  const promotedToday = await prisma.source
+  const promotedToday = await sourceDb()
     .count({
       where: {
         type: "SHOPIFY_DOMAIN",
@@ -408,7 +409,7 @@ export async function discoverSourcesJob(): Promise<{
     }
   >();
 
-  const sources = (await prisma.source.findMany({
+  const sources = (await sourceDb().findMany({
     where: {
       status: "ACTIVE",
       type: { in: ["KEYWORD", "META_PAGE", "TIKTOK_PAGE"] },
@@ -434,10 +435,10 @@ export async function discoverSourcesJob(): Promise<{
       consecutiveFailures: number;
     }
   >();
-  const reliabilityRows =
+  const reliabilityRows = (
     sources.length === 0
       ? []
-      : await prisma.source.findMany({
+      : await sourceDb().findMany({
           where: { id: { in: sources.map((s) => s.id) } },
           select: {
             id: true,
@@ -445,7 +446,13 @@ export async function discoverSourcesJob(): Promise<{
             consecutiveEmptyRuns: true,
             consecutiveFailures: true,
           },
-        });
+        })
+  ) as Array<{
+    id: string;
+    reliabilityStatus: SourceReliabilityStatus;
+    consecutiveEmptyRuns: number;
+    consecutiveFailures: number;
+  }>;
   for (const r of reliabilityRows) {
     reliabilityById.set(r.id, {
       reliabilityStatus: r.reliabilityStatus,

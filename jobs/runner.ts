@@ -3,6 +3,8 @@
 // Phase 2: replace with a proper queue (BullMQ, Trigger.dev, etc.)
 
 import prisma from "@/lib/prisma";
+import type { Source } from "@prisma/client";
+import { sourceDb } from "@/lib/prisma-source-delegate";
 import { logger } from "@/lib/logger";
 import type { AdapterRunResult, SourceType } from "@/types";
 import type { SyncRunSummary } from "@/lib/sources/shared/types";
@@ -101,9 +103,9 @@ export async function runIngestionJob(
     logger.warn("[runner] stuck job sweep failed (non-fatal)", { error: String(e) })
   );
 
-  const source = await prisma.source.findUnique({
+  const source = (await sourceDb().findUnique({
     where: { id: sourceId },
-  });
+  })) as Source | null;
 
   if (!source) {
     throw new Error(`Source not found: ${sourceId}`);
@@ -163,9 +165,9 @@ export async function runIngestionJob(
  * Used for cron-based full refresh.
  */
 export async function runAllActiveSources(triggeredBy = "cron"): Promise<AdapterRunResult[]> {
-  const sources = await prisma.source.findMany({
+  const sources = (await sourceDb().findMany({
     where: { status: "ACTIVE" },
-  });
+  })) as Source[];
 
   const results: AdapterRunResult[] = [];
 

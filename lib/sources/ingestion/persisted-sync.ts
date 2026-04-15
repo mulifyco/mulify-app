@@ -8,6 +8,8 @@ import type { SourceAdapter } from "@/lib/sources/shared/contracts";
 import type { AdapterRuntimeConfigBase, IngestionContext, SyncRunSummary } from "@/lib/sources/shared/types";
 import { SyncResultBuilder } from "@/lib/sources/shared/result";
 import prisma from "@/lib/prisma";
+import type { Source } from "@prisma/client";
+import { sourceDb } from "@/lib/prisma-source-delegate";
 import { logger } from "@/lib/logger";
 import { persistRawPayload } from "@/lib/sources/persistence/raw-record";
 import { applyMappingResult } from "@/lib/sources/persistence/apply-mapping";
@@ -52,7 +54,7 @@ export async function runPersistedSourceSync<TConfig, TRaw>(params: {
     validateResolvedConfig,
   } = params;
 
-  const source = await prisma.source.findUnique({ where: { id: sourceId } });
+  const source = (await sourceDb().findUnique({ where: { id: sourceId } })) as Source | null;
   if (!source) {
     throw new Error(`Source not found: ${sourceId}`);
   }
@@ -131,7 +133,7 @@ export async function runPersistedSourceSync<TConfig, TRaw>(params: {
   await writeSyncLog(sourceId, jobId, "info", "Job started", { runId });
 
   try {
-    await prisma.source.update({
+    await sourceDb().update({
       where: { id: sourceId },
       data: { lastSyncAt: new Date() },
     });
@@ -148,7 +150,7 @@ export async function runPersistedSourceSync<TConfig, TRaw>(params: {
         batch.addWarning(`Fetch batch failed: ${msg}`).close();
         fatalError = msg;
         resultBuilder.setFatalError(msg);
-        await prisma.source.update({
+        await sourceDb().update({
           where: { id: sourceId },
           data: {
             status: "ERROR",
@@ -266,7 +268,7 @@ export async function runPersistedSourceSync<TConfig, TRaw>(params: {
     }
 
     if (!fatalError) {
-      await prisma.source.update({
+      await sourceDb().update({
         where: { id: sourceId },
         data: { status: "ACTIVE", errorCount: 0, lastError: null },
       });
@@ -274,7 +276,7 @@ export async function runPersistedSourceSync<TConfig, TRaw>(params: {
   } catch (err) {
     fatalError = err instanceof Error ? err.message : String(err);
     resultBuilder.setFatalError(fatalError);
-    await prisma.source.update({
+    await sourceDb().update({
       where: { id: sourceId },
       data: {
         status: "ERROR",

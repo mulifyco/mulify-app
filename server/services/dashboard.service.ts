@@ -2,6 +2,7 @@ import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import type { DashboardStats } from "@/types";
 import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
+import { sourceDb } from "@/lib/prisma-source-delegate";
 
 function n(v: bigint | number | null | undefined): number {
   if (v == null) return 0;
@@ -175,7 +176,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
-  const [counts, lastSync, recentJobsRaw, creativeDepthJob, hookIntelJob, tickJob, refreshJob, freshSources1h, staleSources24h, boardsRefreshed24h] =
+  const [counts, lastSyncRaw, recentJobsRaw, creativeDepthJob, hookIntelJob, tickJob, refreshJob, freshSources1h, staleSources24h, boardsRefreshed24h] =
     await Promise.all([
     loadDashboardCountRow(dayAgo).catch(async () => {
       // Fallback if raw SQL fails (enum drift / non-Postgres) — preserve behavior.
@@ -216,9 +217,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         prisma.collection.count(),
         prisma.landingPage.count(),
         prisma.rawRecord.count(),
-        prisma.source.count(),
-        prisma.source.count({ where: { status: "ACTIVE" } }),
-        prisma.source.count({ where: { status: "ERROR" } }),
+        sourceDb().count(),
+        sourceDb().count({ where: { status: "ACTIVE" } }),
+        sourceDb().count({ where: { status: "ERROR" } }),
         prisma.ingestionJob.count({ where: { status: "RUNNING" } }),
         prisma.ingestionJob.count({ where: { status: "FAILED", createdAt: { gte: d } } }),
         prisma.ingestionJob.count({ where: { status: "PARTIAL", createdAt: { gte: d } } }),
@@ -238,7 +239,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         prisma.store.count({ where: { OR: [{ createdAt: { gte: d } }, { updatedAt: { gte: d } }] } }).catch(() => 0),
         creativeClusterDb().count({ where: { createdAt: { gte: d } } }).catch(() => 0),
         prisma.productCluster.count({ where: { createdAt: { gte: d } } }).catch(() => 0),
-        prisma.source.count({ where: { lastSuccessAt: { gte: sixHoursAgo } } }).catch(() => 0),
+        sourceDb().count({ where: { lastSuccessAt: { gte: sixHoursAgo } } }).catch(() => 0),
         prisma.discoveryCandidate
           .count({
             where: {
@@ -279,7 +280,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         recycledDomains24h,
       };
     }),
-    prisma.source.findFirst({
+    sourceDb().findFirst({
       where: { lastSyncAt: { not: null } },
       orderBy: { lastSyncAt: "desc" },
       select: { lastSyncAt: true },
@@ -329,8 +330,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         select: { finishedAt: true },
       })
       .catch(() => null),
-    prisma.source.count({ where: { lastSuccessAt: { gte: oneHourAgo } } }).catch(() => 0),
-    prisma.source
+    sourceDb().count({ where: { lastSuccessAt: { gte: oneHourAgo } } }).catch(() => 0),
+    sourceDb()
       .count({
         where: {
           status: { in: ["ACTIVE", "PENDING"] },
@@ -340,6 +341,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .catch(() => 0),
     prisma.scraperJob.count({ where: { type: "evaluate_saved_board_filters", status: "SUCCESS", finishedAt: { gte: dayAgo } } }).catch(() => 0),
   ]);
+
+  const lastSync = lastSyncRaw as { lastSyncAt: Date | null } | null;
 
   const recentJobs = recentJobsRaw.map((job) => ({
     id: job.id,

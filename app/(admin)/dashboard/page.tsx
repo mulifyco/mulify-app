@@ -31,6 +31,7 @@ import { getRequiredWorkspace } from "@/server/authz/workspace-scope";
 import AdminPageShell from "@/components/admin/AdminPageShell";
 import { SAVED_BOARD_FILTER_ALERT_LOG_DELEGATE_KEY } from "@/lib/saved-board-filter-alert-log";
 import { reviewQueueItemDb } from "@/lib/prisma-review-queue-item-delegate";
+import { sourceDb } from "@/lib/prisma-source-delegate";
 
 export const dynamic = "force-dynamic";
 
@@ -193,7 +194,7 @@ export default async function DashboardPage() {
           }) as Promise<ReviewQueueSummaryRow[]>,
         ]).catch((): [number, ReviewQueueSummaryRow[]] => [0, []])
       : Promise.resolve<[number, ReviewQueueSummaryRow[]]>([0, []]),
-    prisma.source
+    sourceDb()
       .count({
         where: {
           type: "SHOPIFY_DOMAIN",

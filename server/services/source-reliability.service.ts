@@ -1,5 +1,6 @@
 import type { Source, SourceReliabilityStatus } from "@prisma/client";
 import prisma from "@/lib/prisma";
+import { sourceDb } from "@/lib/prisma-source-delegate";
 import { logger } from "@/lib/logger";
 import type { JobStatus } from "@/types";
 import {
@@ -86,7 +87,7 @@ export type ReliabilityIngestionOutcome = {
  * Updates Source reliability counters after an ingestion job reaches a terminal state.
  */
 export async function applyReliabilityAfterIngestion(outcome: ReliabilityIngestionOutcome): Promise<void> {
-  const source = await prisma.source.findUnique({ where: { id: outcome.sourceId } });
+  const source = (await sourceDb().findUnique({ where: { id: outcome.sourceId } })) as Source | null;
   if (!source) return;
 
   const now = new Date();
@@ -181,7 +182,7 @@ export async function applyReliabilityAfterIngestion(outcome: ReliabilityIngesti
     data.lastErrorAt = null;
   }
 
-  await prisma.source.update({
+  await sourceDb().update({
     where: { id: source.id },
     data: data as never,
   });

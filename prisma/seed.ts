@@ -1,6 +1,7 @@
 import "dotenv/config";
 import "../lib/env-local";
 import prisma from "../lib/prisma";
+import { sourceDb } from "../lib/prisma-source-delegate";
 import { Plan, SourceStatus, SourceType } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
@@ -15,9 +16,9 @@ const DEMO_ADMIN_PASSWORD = "admin123";
  */
 async function main(): Promise<void> {
   // Sources (existing behavior)
-  const existingSources = await prisma.source.count();
+  const existingSources = await sourceDb().count();
   if (existingSources === 0) {
-    await prisma.source.createMany({
+    await sourceDb().createMany({
       data: [
         {
           name: "Local — Meta Ads (mock-capable)",
@@ -120,7 +121,7 @@ async function main(): Promise<void> {
 
   await Promise.all(
     demoSources.map((s) =>
-      prisma.source.upsert({
+      sourceDb().upsert({
         where: { id: s.id },
         create: {
           id: s.id,

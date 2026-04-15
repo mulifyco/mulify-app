@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { sourceDb } from "@/lib/prisma-source-delegate";
 import { canonicalDiscoveryStoreDomain, isBlockedDiscoveryDomain } from "@/lib/intelligence/discovery-coverage";
 
 function intFromEnv(name: string, fallback: number): number {
@@ -11,7 +12,9 @@ function intFromEnv(name: string, fallback: number): number {
 let cachedSystemSourceId: string | null | undefined;
 async function resolveSystemSourceId(): Promise<string> {
   if (cachedSystemSourceId !== undefined) return cachedSystemSourceId ?? "feedback_system";
-  const row = await prisma.source.findFirst({ select: { id: true }, orderBy: { createdAt: "asc" } }).catch(() => null);
+  const row = (await sourceDb()
+    .findFirst({ select: { id: true }, orderBy: { createdAt: "asc" } })
+    .catch(() => null)) as { id: string } | null;
   cachedSystemSourceId = row?.id ?? "feedback_system";
   return cachedSystemSourceId;
 }
@@ -40,12 +43,13 @@ export async function enqueueCompareRivalCandidates(params: {
   }
   if (!uniq.length) return { enqueued: 0, suppressed: 0 };
 
-  const [existingSources, existingCandidates] = await Promise.all([
-    prisma.source.findMany({ where: { type: "SHOPIFY_DOMAIN", domain: { in: uniq } }, select: { domain: true } }).catch(() => []),
+  const [existingSourcesRaw, existingCandidates] = await Promise.all([
+    sourceDb().findMany({ where: { type: "SHOPIFY_DOMAIN", domain: { in: uniq } }, select: { domain: true } }).catch(() => []),
     prisma.discoveryCandidate
       .findMany({ where: { domain: { in: uniq } }, select: { domain: true, updatedAt: true } })
       .catch(() => []),
   ]);
+  const existingSources = existingSourcesRaw as Array<{ domain: string | null }>;
   const sourceSet = new Set(existingSources.map((s) => String(s.domain ?? "")));
   const candMap = new Map(existingCandidates.map((c) => [c.domain, c.updatedAt]));
 

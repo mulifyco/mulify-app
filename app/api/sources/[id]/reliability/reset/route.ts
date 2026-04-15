@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { sourceDb } from "@/lib/prisma-source-delegate";
 
 /**
  * Clears auto-disable / cooldown and marks the source reliable again for scheduling.
@@ -13,7 +14,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params;
 
   try {
-    const updated = await prisma.source.update({
+    const updated = await sourceDb().update({
       where: { id },
       data: {
         reliabilityStatus: "HEALTHY",

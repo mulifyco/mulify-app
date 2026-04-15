@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { watchlistDb } from "@/lib/prisma-watchlist-delegate";
 import { normalizeShopifyDomain } from "@/lib/url";
 import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
+import { sourceDb } from "@/lib/prisma-source-delegate";
 
 export type WatchlistWithStores = Watchlist & { stores: WatchlistStore[] };
 
@@ -70,12 +71,12 @@ export const WatchlistRepository = {
     const wl = await watchlistDb().findFirst({ where: { id: watchlistId, workspaceId }, select: { id: true } });
     if (!wl) throw new Error("Not found");
 
-    const [store, source] = await Promise.all([
+    const [store, source] = (await Promise.all([
       prisma.store.findUnique({ where: { domain }, select: { id: true } }).catch(() => null),
-      prisma.source.findFirst({ where: { type: "SHOPIFY_DOMAIN" as any, domain } as any, select: { id: true } }).catch(
-        () => null
+      sourceDb().findFirst({ where: { type: "SHOPIFY_DOMAIN" as any, domain } as any, select: { id: true } }).catch(
+        () => null,
       ),
-    ]);
+    ])) as [{ id: string } | null, { id: string } | null];
 
     return prisma.watchlistStore.upsert({
       where: { watchlistId_domain: { watchlistId, domain } },

@@ -1,6 +1,7 @@
 import prisma from "@/src/lib/prisma";
 import { canonicalDiscoveryStoreDomain, isBlockedDiscoveryDomain } from "@/lib/intelligence/discovery-coverage";
 import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
+import { sourceDb } from "@/lib/prisma-source-delegate";
 
 function intFromEnv(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -16,7 +17,9 @@ function utcDayStart(d = new Date()): Date {
 let cachedLogSourceId: string | null | undefined;
 async function resolveLogSourceId(): Promise<string | null> {
   if (cachedLogSourceId !== undefined) return cachedLogSourceId;
-  const row = await prisma.source.findFirst({ select: { id: true }, orderBy: { createdAt: "asc" } }).catch(() => null);
+  const row = (await sourceDb()
+    .findFirst({ select: { id: true }, orderBy: { createdAt: "asc" } })
+    .catch(() => null)) as { id: string } | null;
   cachedLogSourceId = row?.id ?? null;
   return cachedLogSourceId;
 }
@@ -168,12 +171,13 @@ export async function feedbackSeedsJob(): Promise<{
     .slice(0, Math.max(1, maxPerTick));
 
   const domains = all.map((c) => c.domain);
-  const [existingSources, existingCandidates] = await Promise.all([
-    prisma.source.findMany({ where: { type: "SHOPIFY_DOMAIN", domain: { in: domains } }, select: { domain: true } }).catch(() => []),
+  const [existingSourcesRaw, existingCandidates] = await Promise.all([
+    sourceDb().findMany({ where: { type: "SHOPIFY_DOMAIN", domain: { in: domains } }, select: { domain: true } }).catch(() => []),
     prisma.discoveryCandidate
       .findMany({ where: { domain: { in: domains } }, select: { domain: true, updatedAt: true, createdAt: true } })
       .catch(() => []),
   ]);
+  const existingSources = existingSourcesRaw as Array<{ domain: string | null }>;
   const sourceSet = new Set(existingSources.map((s) => String(s.domain ?? "").trim()).filter(Boolean));
   const candMap = new Map(existingCandidates.map((c) => [c.domain, c]));
 

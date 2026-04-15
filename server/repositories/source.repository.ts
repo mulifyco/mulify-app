@@ -1,8 +1,9 @@
 import prisma from "@/lib/prisma";
+import { sourceDb } from "@/lib/prisma-source-delegate";
 import type { SourceType, SourceStatus } from "@/types";
 import { sourceHealthPrismaWhere } from "@/lib/admin/source-health";
 import { jobWarningsList } from "@/lib/admin/jobs-metadata";
-import type { Prisma } from "@prisma/client";
+import type { Prisma, Source } from "@prisma/client";
 
 export interface CreateSourceInput {
   name: string;
@@ -24,19 +25,35 @@ export interface ListSourcesOptions {
   pageSize?: number;
 }
 
+export type SourceListRow = Prisma.SourceGetPayload<{
+  include: { _count: { select: { ingestionJobs: true; rawRecords: true } } };
+}>;
+
+export type SourceDetailRow = Prisma.SourceGetPayload<{
+  include: { _count: { select: { ingestionJobs: true; rawRecords: true } } };
+}>;
+
 export const SourceRepository = {
-  async findById(id: string) {
-    return prisma.source.findUnique({
+  async findById(id: string): Promise<SourceDetailRow | null> {
+    return (await sourceDb().findUnique({
       where: { id },
       include: {
         _count: {
           select: { ingestionJobs: true, rawRecords: true },
         },
       },
-    });
+    })) as SourceDetailRow | null;
   },
 
-  async list(options: ListSourcesOptions = {}) {
+  async list(
+    options: ListSourcesOptions = {},
+  ): Promise<{
+    data: SourceListRow[];
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  }> {
     const { type, status, health, search, page = 1, pageSize = 25 } = options;
     const skip = (page - 1) * pageSize;
 
@@ -53,8 +70,8 @@ export const SourceRepository = {
         : {}),
     };
 
-    const [data, total] = await Promise.all([
-      prisma.source.findMany({
+    const [rawData, total] = await Promise.all([
+      sourceDb().findMany({
         where,
         include: {
           _count: { select: { ingestionJobs: true, rawRecords: true } },
@@ -63,13 +80,14 @@ export const SourceRepository = {
         skip,
         take: pageSize,
       }),
-      prisma.source.count({ where }),
+      sourceDb().count({ where }),
     ]);
+    const data = rawData as SourceListRow[];
 
     return { data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
   },
 
-  async create(input: CreateSourceInput) {
+  async create(input: CreateSourceInput): Promise<Source> {
     const domain = input.domain?.trim() || undefined;
     const pageUrl = input.pageUrl?.trim() || undefined;
     const query = input.query?.trim() || undefined;
@@ -113,7 +131,7 @@ export const SourceRepository = {
           } satisfies Record<string, unknown>)
         : input.config;
 
-    return prisma.source.create({
+    return (await sourceDb().create({
       data: {
         name: input.name,
         type: input.type,
@@ -124,11 +142,11 @@ export const SourceRepository = {
         metadata: input.metadata as never,
         status: "PENDING",
       },
-    });
+    })) as Source;
   },
 
   async updateStatus(id: string, status: SourceStatus, error?: string) {
-    return prisma.source.update({
+    return sourceDb().update({
       where: { id },
       data: {
         status,
@@ -138,14 +156,14 @@ export const SourceRepository = {
   },
 
   async updateConfig(id: string, config: Record<string, unknown>) {
-    return prisma.source.update({
+    return sourceDb().update({
       where: { id },
       data: { config: config as never },
     });
   },
 
   async delete(id: string) {
-    return prisma.source.delete({ where: { id } });
+    return sourceDb().delete({ where: { id } });
   },
 
   async getRecentJobs(sourceId: string, limit = 10) {
@@ -162,15 +180,16 @@ export const SourceRepository = {
       Number.parseInt(process.env.DISCOVERY_PROMOTE_SCORE ?? "70", 10) || 70;
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    const [total, byStatus, activeCandidates, highConfidenceCandidates, promotedThisWeek] = await Promise.all([
-      prisma.source.count(),
-      prisma.source.groupBy({ by: ["status"], _count: true }),
+    const [total, byStatusRaw, activeCandidates, highConfidenceCandidates, promotedThisWeek] = await Promise.all([
+      sourceDb().count(),
+      sourceDb().groupBy({ by: ["status"], _count: true }),
       prisma.discoveryCandidate.count({ where: { isPromoted: false } }).catch(() => 0),
       prisma.discoveryCandidate
         .count({ where: { isPromoted: false, discoveryScore: { gte: promoteScoreThreshold } } })
         .catch(() => 0),
       prisma.discoveryCandidate.count({ where: { isPromoted: true, promotedAt: { gte: weekAgo } } }).catch(() => 0),
     ]);
+    const byStatus = byStatusRaw as Array<{ status: string; _count: number }>;
     const active = byStatus.find((s) => s.status === "ACTIVE")?._count ?? 0;
     const inError = byStatus.find((s) => s.status === "ERROR")?._count ?? 0;
     return {

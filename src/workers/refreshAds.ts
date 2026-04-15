@@ -1,6 +1,7 @@
 import prisma from "@/src/lib/prisma";
 import { getAdsProvider } from "@/src/integrations/ads";
 import { upsertExternalAdsBatch } from "@/src/integrations/ads/upsert";
+import { sourceDb } from "@/lib/prisma-source-delegate";
 
 function asNonEmptyString(v: unknown): string | undefined {
   return typeof v === "string" && v.trim() ? v.trim() : undefined;
@@ -21,7 +22,7 @@ export async function refreshAdsJob(): Promise<{
   skipped: boolean;
 }> {
   const provider = getAdsProvider();
-  const sources = await prisma.source.findMany({
+  const sources = (await sourceDb().findMany({
     where: { status: "ACTIVE" },
     orderBy: [{ priority: "desc" }, { updatedAt: "desc" }],
     select: {
@@ -33,7 +34,15 @@ export async function refreshAdsJob(): Promise<{
       priority: true,
       errorCount: true,
     },
-  });
+  })) as Array<{
+    id: string;
+    type: string;
+    query: string | null;
+    pageUrl: string | null;
+    country: string | null;
+    priority: number;
+    errorCount: number;
+  }>;
 
   let sourcesProcessed = 0;
   let sourcesSucceeded = 0;
@@ -68,7 +77,7 @@ export async function refreshAdsJob(): Promise<{
       const hasUsableItems = (batch.ads?.length ?? 0) > 0 || (batch.shops?.length ?? 0) > 0;
       if (!hasUsableItems) {
         sourcesFailed += 1;
-        await prisma.source.update({
+        await sourceDb().update({
           where: { id: s.id },
           data: {
             lastErrorAt: new Date(),
@@ -85,7 +94,7 @@ export async function refreshAdsJob(): Promise<{
       adsUpdated += result.adsUpserted;
       skipped = false;
 
-      await prisma.source.update({
+      await sourceDb().update({
         where: { id: s.id },
         data: {
           lastSyncedAt: new Date(),
@@ -98,7 +107,7 @@ export async function refreshAdsJob(): Promise<{
       sourcesSucceeded += 1;
     } catch (e) {
       sourcesFailed += 1;
-      await prisma.source.update({
+      await sourceDb().update({
         where: { id: s.id },
         data: {
           lastErrorAt: new Date(),

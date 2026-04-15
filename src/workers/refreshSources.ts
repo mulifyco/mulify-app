@@ -5,6 +5,7 @@ import { schedulerSkipReason, compareSchedulerSources } from "@/server/services/
 import { sweepStuckIngestionJobs } from "@/server/services/stuck-job-sweep.service";
 import { canonicalDiscoveryStoreDomain } from "@/lib/intelligence/discovery-coverage";
 import { loadDiscoveryScoringContext } from "@/server/services/discovery-scoring-context.service";
+import { sourceDb } from "@/lib/prisma-source-delegate";
 
 type SourceRow = {
   id: string;
@@ -105,7 +106,7 @@ export async function refreshSourcesJob(): Promise<{
     if (d) cmpSet.add(d);
   }
 
-  const sources = (await prisma.source.findMany({
+  const sources = (await sourceDb().findMany({
     where: { status: { in: ["ACTIVE", "PENDING"] } },
     select: {
       id: true,
@@ -259,8 +260,8 @@ export async function refreshSourcesJob(): Promise<{
     sourcesSkippedReliability,
     stuckIngestionJobsRecovered,
     boostedFreshSources,
-    freshSources1h: await prisma.source.count({ where: { lastSuccessAt: { gte: since1h } } }).catch(() => 0),
-    staleSources24h: await prisma.source
+    freshSources1h: await sourceDb().count({ where: { lastSuccessAt: { gte: since1h } } }).catch(() => 0),
+    staleSources24h: await sourceDb()
       .count({
         where: {
           status: { in: ["ACTIVE", "PENDING"] },

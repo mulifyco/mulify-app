@@ -1,4 +1,6 @@
 import prisma from "@/lib/prisma";
+import type { Source } from "@prisma/client";
+import { sourceDb } from "@/lib/prisma-source-delegate";
 import { watchlistDb } from "@/lib/prisma-watchlist-delegate";
 import { WatchlistRepository } from "@/server/repositories/watchlist.repository";
 import { generateReportSummary, type CreateReportInput } from "@/server/services/report.service";
@@ -348,8 +350,8 @@ export async function executeAutoAction(params: {
     if (candidate.isPromoted) return { ok: true, redirectUrl: "/sources", message: "Already promoted." };
 
     const domain = candidate.domain;
-    const existing = await prisma.source.findFirst({ where: { type: "SHOPIFY_DOMAIN", domain } });
-    const source = existing
+    const existing = (await sourceDb().findFirst({ where: { type: "SHOPIFY_DOMAIN", domain } })) as Source | null;
+    const source: Source = existing
       ? existing
       : await SourceRepository.create({
           name: `Discovered: ${domain}`,
@@ -378,7 +380,7 @@ export async function executeAutoAction(params: {
     if (!domain && entityType === "STORE") domain = await resolveDomainFromStore(entityId);
     if (!domain && entityType === "PRODUCT_CLUSTER") domain = await resolveDomainFromProductCluster(entityId);
     if (!domain) return { ok: false, message: "No domain available to create source." };
-    const existing = await prisma.source.findFirst({ where: { type: "SHOPIFY_DOMAIN", domain } });
+    const existing = (await sourceDb().findFirst({ where: { type: "SHOPIFY_DOMAIN", domain } })) as Source | null;
     if (existing) return { ok: true, createdId: existing.id, redirectUrl: `/sources/${existing.id}`, message: "Source already exists." };
     const created = await SourceRepository.create({
       name: `Manual: ${domain}`.slice(0, 100),

@@ -10,6 +10,7 @@ import {
 import { loadDiscoveryScoringContext, scoreContextForDomain } from "@/server/services/discovery-scoring-context.service";
 import { openReviewQueueItem } from "@/server/services/review-queue.service";
 import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
+import { sourceDb } from "@/lib/prisma-source-delegate";
 
 function intFromEnv(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -26,7 +27,10 @@ let cachedLogSourceId: string | null | undefined;
 
 async function resolveLogSourceId(): Promise<string | null> {
   if (cachedLogSourceId !== undefined) return cachedLogSourceId;
-  const row = await prisma.source.findFirst({ select: { id: true }, orderBy: { createdAt: "asc" } });
+  const row = (await sourceDb().findFirst({
+    select: { id: true },
+    orderBy: { createdAt: "asc" },
+  })) as { id: string } | null;
   cachedLogSourceId = row?.id ?? null;
   return cachedLogSourceId;
 }
@@ -397,12 +401,18 @@ export async function autonomousDiscoveryJob(): Promise<{
     .sort((a, b) => b.score - a.score || b.evidenceCount - a.evidenceCount)
     .slice(0, candidateUpsertLimit);
 
-  const existing = await prisma.source
+  const existing = await sourceDb()
     .findMany({ where: { type: "SHOPIFY_DOMAIN" }, select: { domain: true } })
-    .then((rows) => new Set(rows.map((r) => canonicalDiscoveryStoreDomain(r.domain ?? "")).filter(Boolean) as string[]))
+    .then((rows) =>
+      new Set(
+        (rows as Array<{ domain: string | null }>)
+          .map((r) => canonicalDiscoveryStoreDomain(r.domain ?? ""))
+          .filter(Boolean) as string[],
+      ),
+    )
     .catch(() => new Set<string>());
 
-  const createdToday = await prisma.source
+  const createdToday = await sourceDb()
     .count({
       where: {
         type: "SHOPIFY_DOMAIN",
@@ -453,7 +463,7 @@ export async function autonomousDiscoveryJob(): Promise<{
         const shouldAutoPromote = score >= promoteScoreHigh && remainingBudget > 0 && !alreadyPromotedToday;
 
         if (shouldAutoPromote && !existing.has(c.domain)) {
-          const created = await prisma.source
+          const created = (await sourceDb()
             .create({
               data: {
                 name: `AutoDiscovered: ${c.domain}`,
@@ -466,7 +476,7 @@ export async function autonomousDiscoveryJob(): Promise<{
               },
               select: { id: true },
             })
-            .catch(() => null);
+            .catch(() => null)) as { id: string } | null;
           if (created?.id) {
             await dc.update({
               where: { id: row.id },
@@ -499,12 +509,12 @@ export async function autonomousDiscoveryJob(): Promise<{
   try {
     const seeds = await createKeywordSeeds(keywordSeedLimit);
     for (const term of seeds) {
-      const exists = await prisma.source.findFirst({
+      const exists = (await sourceDb().findFirst({
         where: { type: "KEYWORD", query: term },
         select: { id: true },
-      });
+      })) as { id: string } | null;
       if (exists) continue;
-      await prisma.source.create({
+      await sourceDb().create({
         data: {
           name: `AutoSeed: ${term}`,
           type: "KEYWORD",

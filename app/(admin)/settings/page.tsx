@@ -1,5 +1,6 @@
 import PageHeader from "@/components/ui/PageHeader";
 import prisma from "@/lib/prisma";
+import { sourceDb } from "@/lib/prisma-source-delegate";
 import { getConfig, shouldMockAllSourceApis, shouldMockMetaAdsApis } from "@/config";
 import { statusBadge } from "@/components/ui/Badge";
 import Link from "next/link";
@@ -7,16 +8,19 @@ import { getEnvChecks } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
+type SettingsSourceRow = { id: string; name: string; type: string; status: string };
+
 export default async function SettingsPage() {
-  const [sourceCount, jobCount, rawRecordCount, sources] = await Promise.all([
-    prisma.source.count(),
+  const [sourceCount, jobCount, rawRecordCount, sourcesRaw] = await Promise.all([
+    sourceDb().count(),
     prisma.ingestionJob.count(),
     prisma.rawRecord.count(),
-    prisma.source.findMany({
+    sourceDb().findMany({
       orderBy: { name: "asc" },
       select: { id: true, name: true, type: true, status: true },
     }),
   ]);
+  const sources = sourcesRaw as SettingsSourceRow[];
 
   let cfg: ReturnType<typeof getConfig> | null = null;
   try {
@@ -130,7 +134,7 @@ export default async function SettingsPage() {
             <p className="text-sm text-muted-2">No sources in database. Seed or add under Sources.</p>
           ) : (
             <ul className="divide-y divide-border border border-border rounded-md overflow-hidden">
-              {sources.map((s: (typeof sources)[number]) => (
+              {sources.map((s) => (
                 <li
                   key={s.id}
                   className="flex items-center justify-between gap-3 px-3 py-2.5 bg-card text-sm"
