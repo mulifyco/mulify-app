@@ -1,5 +1,6 @@
 import prisma from "@/src/lib/prisma";
 import { canonicalDiscoveryStoreDomain, isBlockedDiscoveryDomain } from "@/lib/intelligence/discovery-coverage";
+import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
 
 function intFromEnv(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -98,12 +99,12 @@ export async function feedbackSeedsJob(): Promise<{
 
   // Creative winners (24h): ad destinations / shops → domains.
   try {
-    const clusters = await prisma.creativeCluster.findMany({
+    const clusters = (await creativeClusterDb().findMany({
       where: { lastSeenAt: { gte: since24h }, creativeWinnerScore: { gte: 14 } },
       orderBy: [{ creativeWinnerScore: "desc" }, { lastSeenAt: "desc" }],
       take: 24,
       select: { id: true },
-    });
+    })) as Array<{ id: string }>;
     const ids = clusters.map((c) => c.id);
     if (ids.length) {
       const members = await prisma.creativeClusterMember.findMany({

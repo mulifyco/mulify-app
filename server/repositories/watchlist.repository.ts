@@ -1,7 +1,8 @@
-import type { Watchlist, WatchlistStore } from "@prisma/client";
+import type { CreativeCluster, ProductCluster, Watchlist, WatchlistStore } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { watchlistDb } from "@/lib/prisma-watchlist-delegate";
 import { normalizeShopifyDomain } from "@/lib/url";
+import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
 
 export type WatchlistWithStores = Watchlist & { stores: WatchlistStore[] };
 
@@ -174,44 +175,44 @@ export const WatchlistRepository = {
     const shopIds = shops.map((s) => s.id);
 
     const topProductClusters = storeIds.length
-      ? prisma.productCluster.findMany({
+      ? (prisma.productCluster.findMany({
           where: { members: { some: { storeId: { in: storeIds } } } },
           orderBy: [{ winningScore: "desc" }, { lastSeenAt: "desc" }],
           take: 12,
-        })
-      : Promise.resolve([]);
+        }) as Promise<ProductCluster[]>)
+      : Promise.resolve([] as ProductCluster[]);
 
     const topCreativeClusters = shopIds.length
-      ? prisma.creativeCluster.findMany({
+      ? (creativeClusterDb().findMany({
           where: { members: { some: { shopId: { in: shopIds } } } },
           orderBy: [{ scaleScore: "desc" }, { lastSeenAt: "desc" }],
           take: 12,
-        })
-      : Promise.resolve([]);
+        }) as Promise<CreativeCluster[]>)
+      : Promise.resolve([] as CreativeCluster[]);
 
     const readyToScale = storeIds.length
-      ? prisma.productCluster.findMany({
+      ? (prisma.productCluster.findMany({
           where: { members: { some: { storeId: { in: storeIds } } } },
           orderBy: [{ readyToScaleScore: "desc" }, { lastSeenAt: "desc" }],
           take: 10,
-        })
-      : Promise.resolve([]);
+        }) as Promise<ProductCluster[]>)
+      : Promise.resolve([] as ProductCluster[]);
 
     const earlyMovers = storeIds.length
-      ? prisma.productCluster.findMany({
+      ? (prisma.productCluster.findMany({
           where: { members: { some: { storeId: { in: storeIds } } } },
           orderBy: [{ earlyMoverScore: "desc" }, { lastSeenAt: "desc" }],
           take: 10,
-        })
-      : Promise.resolve([]);
+        }) as Promise<ProductCluster[]>)
+      : Promise.resolve([] as ProductCluster[]);
 
     const saturated = storeIds.length
-      ? prisma.productCluster.findMany({
+      ? (prisma.productCluster.findMany({
           where: { members: { some: { storeId: { in: storeIds } } } },
           orderBy: [{ saturatedScore: "desc" }, { lastSeenAt: "desc" }],
           take: 10,
-        })
-      : Promise.resolve([]);
+        }) as Promise<ProductCluster[]>)
+      : Promise.resolve([] as ProductCluster[]);
 
     const [pc, cc, rts, em, sat] = await Promise.all([
       topProductClusters,

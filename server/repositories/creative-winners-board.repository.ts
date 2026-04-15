@@ -1,5 +1,31 @@
 import prisma from "@/lib/prisma";
 import type { Platform } from "@prisma/client";
+import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
+
+type CreativeClusterWinnerQueryRow = {
+  id: string;
+  fingerprint: string;
+  platform: Platform;
+  creativeWinnerScore: number;
+  scaleScore: number;
+  saturationScore: number;
+  creativeCount: number;
+  storeCount: number;
+  productClusterCount: number;
+  firstSeenAt: Date;
+  lastSeenAt: Date;
+  confidence: number;
+  members: Array<{
+    adId: string | null;
+    ad: {
+      thumbnailUrl: string | null;
+      adImageUrl: string | null;
+      creativeUrl: string | null;
+      adTitle: string | null;
+      adText: string | null;
+    } | null;
+  }>;
+};
 
 export interface CreativeWinnersRow {
   clusterId: string;
@@ -24,7 +50,7 @@ export const CreativeWinnersBoardRepository = {
     const take = Math.max(1, Math.min(5000, options.take ?? 30));
     const minScore = options.minScore ?? 0;
 
-    const clusters = await prisma.creativeCluster.findMany({
+    const clusters = (await creativeClusterDb().findMany({
       where: { creativeWinnerScore: { gte: minScore } },
       orderBy: [{ creativeWinnerScore: "desc" }, { scaleScore: "desc" }, { lastSeenAt: "desc" }],
       take,
@@ -58,7 +84,7 @@ export const CreativeWinnersBoardRepository = {
           },
         },
       },
-    });
+    })) as CreativeClusterWinnerQueryRow[];
 
     return clusters.map((c) => {
       const m0 = c.members[0];

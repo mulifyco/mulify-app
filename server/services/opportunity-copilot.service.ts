@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
 
 export type CopilotOpportunityLevel = "BREAKOUT" | "STRONG" | "WATCH" | "WEAK";
 export type CopilotRiskLevel = "LOW" | "MEDIUM" | "HIGH";
@@ -229,8 +230,22 @@ export async function copilotProductCluster(id: string): Promise<CopilotPayload 
   };
 }
 
+type CopilotCreativeClusterSelect = {
+  id: string;
+  fingerprint: string;
+  platform: string;
+  creativeWinnerScore: number;
+  scaleScore: number;
+  saturationScore: number;
+  creativeCount: number;
+  storeCount: number;
+  productClusterCount: number;
+  confidence: number;
+  lastSeenAt: Date;
+};
+
 export async function copilotCreativeCluster(id: string): Promise<CopilotPayload | null> {
-  const c = await prisma.creativeCluster.findUnique({
+  const c = (await creativeClusterDb().findUnique({
     where: { id },
     select: {
       id: true,
@@ -245,7 +260,7 @@ export async function copilotCreativeCluster(id: string): Promise<CopilotPayload
       confidence: true,
       lastSeenAt: true,
     },
-  });
+  })) as CopilotCreativeClusterSelect | null;
   if (!c) return null;
 
   const delta7d = await last7dDeltaCreativeWinner(c.id);

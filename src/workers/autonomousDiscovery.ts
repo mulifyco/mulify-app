@@ -9,6 +9,7 @@ import {
 } from "@/lib/intelligence/discovery-coverage";
 import { loadDiscoveryScoringContext, scoreContextForDomain } from "@/server/services/discovery-scoring-context.service";
 import { openReviewQueueItem } from "@/server/services/review-queue.service";
+import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
 
 function intFromEnv(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -126,17 +127,21 @@ async function createKeywordSeeds(limit: number): Promise<string[]> {
   const out: string[] = [];
   const take = Math.max(20, limit * 4);
 
-  const [products, clusters, creatives] = await Promise.all([
+  const [products, clusters, creatives] = (await Promise.all([
     prisma.product
       .findMany({ orderBy: { lastSeenAt: "desc" }, take, select: { title: true } })
       .catch(() => [] as Array<{ title: string }>),
     prisma.productCluster
       .findMany({ orderBy: { readyToScaleScore: "desc" }, take: Math.min(200, take), select: { title: true } })
       .catch(() => [] as Array<{ title: string | null }>),
-    prisma.creativeCluster
+    creativeClusterDb()
       .findMany({ orderBy: { creativeWinnerScore: "desc" }, take: Math.min(200, take), select: { fingerprint: true } })
       .catch(() => [] as Array<{ fingerprint: string }>),
-  ]);
+  ])) as [
+    Array<{ title: string }>,
+    Array<{ title: string | null }>,
+    Array<{ fingerprint: string }>,
+  ];
 
   for (const p of products) out.push(...tokenSeeds(p.title));
   for (const c of clusters) if (c.title) out.push(...tokenSeeds(c.title));

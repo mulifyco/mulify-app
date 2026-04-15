@@ -19,6 +19,7 @@ import { tenantBackfillJob } from "@/src/workers/tenantBackfill";
 import { integrationSyncRunsJob } from "@/src/workers/integrationSyncRuns";
 import { sweepAllStuckJobs } from "@/server/services/stuck-job-sweep.service";
 import { assertProdEnvOrThrow, getEnvChecks } from "@/lib/env";
+import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -187,7 +188,7 @@ async function main() {
     const [newStores, newProducts, newCreatives, newClusters] = await Promise.all([
       prisma.store.count({ where: { createdAt: { gte: tickStartedAt } } }).catch(() => 0),
       prisma.product.count({ where: { createdAt: { gte: tickStartedAt } } }).catch(() => 0),
-      prisma.creativeCluster.count({ where: { createdAt: { gte: tickStartedAt } } }).catch(() => 0),
+      creativeClusterDb().count({ where: { createdAt: { gte: tickStartedAt } } }).catch(() => 0),
       prisma.productCluster.count({ where: { createdAt: { gte: tickStartedAt } } }).catch(() => 0),
     ]);
 

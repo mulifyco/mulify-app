@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
 
 export type PersonaLabel =
   | "Problem Aware Impulse Buyer"
@@ -280,7 +281,10 @@ async function sourceFromProductCluster(clusterId: string) {
 }
 
 async function sourceFromCreativeCluster(clusterId: string) {
-  const c = await prisma.creativeCluster.findUnique({ where: { id: clusterId }, select: { id: true, fingerprint: true, platform: true } });
+  const c = (await creativeClusterDb().findUnique({
+    where: { id: clusterId },
+    select: { id: true, fingerprint: true, platform: true },
+  })) as { id: string; fingerprint: string; platform: string } | null;
   if (!c) return null;
   const text = [c.fingerprint, c.platform].join("\n");
   return { seed: `CREATIVE_CLUSTER:${c.id}`, text, pricePoint: null as number | null, platformHint: c.platform ?? null };

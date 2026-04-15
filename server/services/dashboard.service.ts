@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import type { DashboardStats } from "@/types";
+import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
 
 function n(v: bigint | number | null | undefined): number {
   if (v == null) return 0;
@@ -235,7 +236,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         prisma.product.count({ where: { createdAt: { gte: d } } }).catch(() => 0),
         prisma.collection.count({ where: { createdAt: { gte: d } } }).catch(() => 0),
         prisma.store.count({ where: { OR: [{ createdAt: { gte: d } }, { updatedAt: { gte: d } }] } }).catch(() => 0),
-        prisma.creativeCluster.count({ where: { createdAt: { gte: d } } }).catch(() => 0),
+        creativeClusterDb().count({ where: { createdAt: { gte: d } } }).catch(() => 0),
         prisma.productCluster.count({ where: { createdAt: { gte: d } } }).catch(() => 0),
         prisma.source.count({ where: { lastSuccessAt: { gte: sixHoursAgo } } }).catch(() => 0),
         prisma.discoveryCandidate

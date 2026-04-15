@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
 
 function intFromEnv(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -246,7 +247,7 @@ export async function buildOpsSourceHealth(): Promise<{
     prisma.product.count({ where: { createdAt: { gte: since24h } } }).catch(() => 0),
     prisma.collection.count({ where: { createdAt: { gte: since24h } } }).catch(() => 0),
     prisma.store.count({ where: { OR: [{ createdAt: { gte: since24h } }, { updatedAt: { gte: since24h } }] } }).catch(() => 0),
-    prisma.creativeCluster.count({ where: { createdAt: { gte: since24h } } }).catch(() => 0),
+    creativeClusterDb().count({ where: { createdAt: { gte: since24h } } }).catch(() => 0),
     prisma.productCluster.count({ where: { createdAt: { gte: since24h } } }).catch(() => 0),
     prisma.source.count({ where: { lastSuccessAt: { gte: since6h } } }).catch(() => 0),
     prisma.source

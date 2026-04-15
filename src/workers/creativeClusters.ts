@@ -1,8 +1,10 @@
+import type { Platform } from "@prisma/client";
 import prisma from "@/src/lib/prisma";
 import { createHash } from "crypto";
 import { computeCreativeWinnerScore } from "@/lib/intelligence/creative-winner";
 import { creativeMediaFingerprintKey } from "@/lib/intelligence/creative-fingerprint";
 import { openReviewQueueItem } from "@/server/services/review-queue.service";
+import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
 
 function clampInt(n: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, Math.floor(n)));
@@ -46,29 +48,29 @@ async function upsertCluster(params: {
   shopIdsByAdId: Map<string, string | null>;
 }) {
   const now = new Date();
-  const existing = await prisma.creativeCluster.findUnique({
+  const existing = await creativeClusterDb().findUnique({
     where: { fingerprint: params.fingerprint },
     select: { id: true },
   });
 
-  const cluster = await prisma.creativeCluster.upsert({
+  const cluster = (await creativeClusterDb().upsert({
     where: { fingerprint: params.fingerprint },
     create: {
       fingerprint: params.fingerprint,
-      platform: params.platform as any,
+      platform: params.platform as Platform,
       confidence: params.confidence,
       firstSeenAt: now,
       lastSeenAt: now,
       metadata: { version: 2, createdBy: "refresh_creative_clusters" } as never,
     },
     update: {
-      platform: params.platform as any,
+      platform: params.platform as Platform,
       confidence: params.confidence,
       lastSeenAt: now,
       metadata: { version: 2, updatedBy: "refresh_creative_clusters" } as never,
     },
     select: { id: true },
-  });
+  })) as { id: string };
 
   for (const adId of params.adIds) {
     await prisma.creativeClusterMember.upsert({
@@ -154,7 +156,7 @@ async function upsertCluster(params: {
     confidence: refinedConfidence,
   });
 
-  await prisma.creativeCluster.update({
+  await creativeClusterDb().update({
     where: { id: cluster.id },
     data: {
       creativeCount,

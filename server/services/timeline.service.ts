@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { utcDayStart } from "@/lib/timeline/parse-range";
 import type { TimelineRangeParsed } from "@/lib/timeline/parse-range";
+import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
 
 export async function resolveProductTimelineClusterId(id: string): Promise<string | null> {
   const asCluster = await prisma.productCluster.findUnique({ where: { id }, select: { id: true } });
@@ -13,7 +14,9 @@ export async function resolveProductTimelineClusterId(id: string): Promise<strin
 }
 
 export async function resolveCreativeTimelineClusterId(id: string): Promise<string | null> {
-  const asCluster = await prisma.creativeCluster.findUnique({ where: { id }, select: { id: true } });
+  const asCluster = (await creativeClusterDb().findUnique({ where: { id }, select: { id: true } })) as {
+    id: string;
+  } | null;
   if (asCluster) return asCluster.id;
   const member = await prisma.creativeClusterMember.findUnique({
     where: { adId: id },

@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import prisma from "@/lib/prisma";
 import PageHeader from "@/components/ui/PageHeader";
 import Badge from "@/components/ui/Badge";
 import TimelineHistoryPanel from "@/components/internal/TimelineHistoryPanel";
@@ -8,6 +7,8 @@ import ExplainDrawer from "@/components/internal/ExplainDrawer";
 import CopilotDrawer from "@/components/internal/CopilotDrawer";
 import PersonaAnalyzerDrawer from "@/components/internal/PersonaAnalyzerDrawer";
 import HookIntelligenceDrawer from "@/components/internal/HookIntelligenceDrawer";
+import type { Platform } from "@prisma/client";
+import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
 
 export const dynamic = "force-dynamic";
 
@@ -15,9 +16,24 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+type CreativeClusterDetail = {
+  id: string;
+  fingerprint: string;
+  platform: Platform;
+  creativeCount: number;
+  storeCount: number;
+  productClusterCount: number;
+  scaleScore: number;
+  saturationScore: number;
+  creativeWinnerScore: number;
+  confidence: number;
+  firstSeenAt: Date;
+  lastSeenAt: Date;
+};
+
 export default async function CreativeClusterDetailPage({ params }: Props) {
   const { id } = await params;
-  const cluster = await prisma.creativeCluster.findUnique({
+  const cluster = (await creativeClusterDb().findUnique({
     where: { id },
     select: {
       id: true,
@@ -33,7 +49,7 @@ export default async function CreativeClusterDetailPage({ params }: Props) {
       firstSeenAt: true,
       lastSeenAt: true,
     },
-  });
+  })) as CreativeClusterDetail | null;
 
   if (!cluster) notFound();
 

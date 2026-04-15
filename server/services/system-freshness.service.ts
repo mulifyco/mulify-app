@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { getCachedOpsSourceHealth } from "@/lib/perf/cached-server-data";
+import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
 
 export type SystemFreshnessPayload = {
   workerRunning: boolean;
@@ -52,7 +53,7 @@ export async function buildSystemFreshness(): Promise<SystemFreshnessPayload> {
         .catch(() => 0),
       prisma.store.count({ where: { createdAt: { gte: dayAgo } } }).catch(() => 0),
       prisma.product.count({ where: { createdAt: { gte: dayAgo } } }).catch(() => 0),
-      prisma.creativeCluster.count({ where: { createdAt: { gte: dayAgo } } }).catch(() => 0),
+      creativeClusterDb().count({ where: { createdAt: { gte: dayAgo } } }).catch(() => 0),
       prisma.productCluster.count({ where: { createdAt: { gte: dayAgo } } }).catch(() => 0),
       getCachedOpsSourceHealth().catch(() => null),
     ]);

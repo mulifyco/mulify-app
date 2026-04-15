@@ -1,11 +1,12 @@
 import prisma from "@/src/lib/prisma";
-import type { BoardType } from "@prisma/client";
+import type { BoardType, CreativeCluster } from "@prisma/client";
 import { canonicalStoreDomainForEntity } from "@/lib/intelligence/entity-identity";
 import { ReadyToScaleBoardRepository } from "@/server/repositories/ready-to-scale-board.repository";
 import { MarketLeadersBoardRepository } from "@/server/repositories/market-leaders-board.repository";
 import { EarlyMoversBoardRepository } from "@/server/repositories/early-movers-board.repository";
 import { SaturatedProductsBoardRepository } from "@/server/repositories/saturated-products-board.repository";
 import { CreativeWinnersBoardRepository } from "@/server/repositories/creative-winners-board.repository";
+import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
 
 function intFromEnv(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -204,10 +205,10 @@ export async function createHistoricalSnapshotsJob(): Promise<{
   // ── Creative clusters ─────────────────────────────────────────
   let creativeSnapshots = 0;
   try {
-    const creativeRows = await prisma.creativeCluster.findMany({
+    const creativeRows = (await creativeClusterDb().findMany({
       orderBy: [{ creativeWinnerScore: "desc" }, { scaleScore: "desc" }, { lastSeenAt: "desc" }],
       take: creativeLimit,
-    });
+    })) as CreativeCluster[];
     const cIds = creativeRows.map((c) => c.id);
     const cPrevs = await prisma.creativeClusterSnapshot.findMany({
       where: { creativeClusterId: { in: cIds }, snapshotDate: prevDay },

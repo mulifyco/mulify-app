@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
-import type { BoardType, Platform, Prisma } from "@prisma/client";
+import type { BoardType, Platform, Prisma, SavedBoardFilter } from "@prisma/client";
 
-export type SavedBoardFilterRow = Prisma.SavedBoardFilterGetPayload<Record<string, never>>;
+export type SavedBoardFilterRow = SavedBoardFilter;
 
 export const SavedBoardFilterRepository = {
   async list(workspaceId: string): Promise<SavedBoardFilterRow[]> {

@@ -15,14 +15,19 @@ import EmptyState from "@/components/internal/EmptyState";
 import { ProductEventType } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { canAccessFeature, getUserPlan } from "@/lib/billing/access";
-import type { Prisma } from "@prisma/client";
 import { trackProductEventFromSession } from "@/server/services/product-analytics.service";
 
 export const dynamic = "force-dynamic";
 
-type WatchlistAlertRow = Prisma.WatchlistAlertLogGetPayload<{
-  include: { watchlist: { select: { id: true; name: true } } };
-}>;
+const watchlistAlertFindManyArgs = {
+  include: { watchlist: { select: { id: true, name: true } } },
+} as const;
+
+async function getWatchlistAlertRows() {
+  return prisma.watchlistAlertLog.findMany(watchlistAlertFindManyArgs);
+}
+
+type WatchlistAlertRow = Awaited<ReturnType<typeof getWatchlistAlertRows>>[number];
 
 function sevVariant(s: string): "red" | "yellow" | "default" {
   if (s === "HIGH") return "red";
@@ -64,10 +69,10 @@ export default async function WatchlistAlertsPage({ searchParams }: { searchPara
   try {
     const [rows, cnt] = await Promise.all([
       prisma.watchlistAlertLog.findMany({
+        ...watchlistAlertFindManyArgs,
         orderBy: { createdAt: "desc" },
         skip,
         take: pageSize,
-        include: { watchlist: { select: { id: true, name: true } } },
       }),
       prisma.watchlistAlertLog.count(),
     ]);

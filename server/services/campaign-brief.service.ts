@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
 
 export type CampaignBriefPayload = {
   productAngle: string;
@@ -153,7 +154,7 @@ export async function campaignBriefProductCluster(clusterId: string): Promise<Ca
 }
 
 export async function campaignBriefCreativeCluster(clusterId: string): Promise<CampaignBriefPayload | null> {
-  const c = await prisma.creativeCluster.findUnique({
+  const c = (await creativeClusterDb().findUnique({
     where: { id: clusterId },
     select: {
       id: true,
@@ -164,7 +165,15 @@ export async function campaignBriefCreativeCluster(clusterId: string): Promise<C
       storeCount: true,
       saturationScore: true,
     },
-  });
+  })) as {
+    id: string;
+    fingerprint: string;
+    platform: string;
+    creativeWinnerScore: number;
+    scaleScore: number;
+    storeCount: number;
+    saturationScore: number;
+  } | null;
   if (!c) return null;
 
   const base = briefBase();

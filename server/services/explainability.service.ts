@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { creativeClusterDb } from "@/lib/prisma-creative-cluster-delegate";
 
 export type ExplainabilityPayload = {
   summary: string;
@@ -121,8 +122,23 @@ export async function explainProductCluster(clusterId: string): Promise<Explaina
   };
 }
 
+type CreativeClusterExplainSelect = {
+  id: string;
+  fingerprint: string;
+  platform: string;
+  creativeCount: number;
+  storeCount: number;
+  productClusterCount: number;
+  confidence: number;
+  firstSeenAt: Date;
+  lastSeenAt: Date;
+  saturationScore: number;
+  scaleScore: number;
+  creativeWinnerScore: number;
+};
+
 export async function explainCreativeCluster(clusterId: string): Promise<ExplainabilityPayload | null> {
-  const c = await prisma.creativeCluster
+  const c = (await creativeClusterDb()
     .findUnique({
       where: { id: clusterId },
       select: {
@@ -140,7 +156,7 @@ export async function explainCreativeCluster(clusterId: string): Promise<Explain
         creativeWinnerScore: true,
       },
     })
-    .catch(() => null);
+    .catch(() => null)) as CreativeClusterExplainSelect | null;
   if (!c) return null;
 
   const recency = formatAge(c.lastSeenAt);
