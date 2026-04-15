@@ -1,6 +1,5 @@
 import Link from "next/link";
 import PageHeader from "@/components/ui/PageHeader";
-import prisma from "@/lib/prisma";
 import Badge from "@/components/ui/Badge";
 import { formatDate } from "@/lib/date";
 import Pagination from "@/components/ui/Pagination";
@@ -10,21 +9,9 @@ import PaywallPanel from "@/components/internal/PaywallPanel";
 import { auth } from "@/lib/auth";
 import { canAccessFeature, getUserPlan } from "@/lib/billing/access";
 import { trackBoardViewServer } from "@/lib/analytics/track-board-server";
+import { getBoardAlerts, loadBoardAlertsPage } from "@/lib/board-alerts-data";
 
 export const dynamic = "force-dynamic";
-
-const boardAlertFindManyArgs = {
-  include: {
-    savedFilter: {
-      select: {
-        id: true,
-        name: true,
-      },
-    },
-  },
-} as const;
-
-const getBoardAlerts = () => prisma.boardAlertLog.findMany(boardAlertFindManyArgs);
 
 type BoardAlertRow = Awaited<ReturnType<typeof getBoardAlerts>>[number];
 
@@ -67,15 +54,7 @@ export default async function AlertsPage({
   let error: string | null = null;
 
   try {
-    const [rows, cnt] = await Promise.all([
-      prisma.boardAlertLog.findMany({
-        ...boardAlertFindManyArgs,
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: pageSize,
-      }),
-      prisma.boardAlertLog.count(),
-    ]);
+    const { rows, total: cnt } = await loadBoardAlertsPage({ skip, take: pageSize });
     items = rows;
     total = cnt;
   } catch (e) {
