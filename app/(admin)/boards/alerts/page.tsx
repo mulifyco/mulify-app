@@ -9,11 +9,11 @@ import PaywallPanel from "@/components/internal/PaywallPanel";
 import { auth } from "@/lib/auth";
 import { canAccessFeature, getUserPlan } from "@/lib/billing/access";
 import { trackBoardViewServer } from "@/lib/analytics/track-board-server";
-import { getBoardAlerts, loadBoardAlertsPage } from "@/lib/board-alerts-data";
+import { getSavedBoardFilterAlertLogRows, loadSavedBoardFilterAlertLogPage } from "@/lib/saved-board-filter-alert-log";
 
 export const dynamic = "force-dynamic";
 
-type BoardAlertRow = Awaited<ReturnType<typeof getBoardAlerts>>[number];
+type SavedBoardFilterAlertLogRow = Awaited<ReturnType<typeof getSavedBoardFilterAlertLogRows>>[number];
 
 function severityVariant(s: string): "green" | "yellow" | "red" | "default" {
   if (s === "HIGH") return "red";
@@ -49,12 +49,12 @@ export default async function AlertsPage({
   const pageSize = 30;
   const skip = (page - 1) * pageSize;
 
-  let items: BoardAlertRow[] = [];
+  let items: SavedBoardFilterAlertLogRow[] = [];
   let total = 0;
   let error: string | null = null;
 
   try {
-    const { rows, total: cnt } = await loadBoardAlertsPage({ skip, take: pageSize });
+    const { rows, total: cnt } = await loadSavedBoardFilterAlertLogPage({ skip, take: pageSize });
     items = rows;
     total = cnt;
   } catch (e) {

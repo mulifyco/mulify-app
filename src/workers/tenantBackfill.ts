@@ -1,4 +1,5 @@
 import prisma from "@/src/lib/prisma";
+import { SAVED_BOARD_FILTER_ALERT_LOG_DELEGATE_KEY } from "@/lib/saved-board-filter-alert-log";
 
 function intFromEnv(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -56,7 +57,13 @@ export async function tenantBackfillJob(): Promise<{
   bump("watchlistAlertLog", await prisma.watchlistAlertLog.updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as any).then(r => r.count).catch(() => 0));
   bump("savedBoardFilter", await prisma.savedBoardFilter.updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as any).then(r => r.count).catch(() => 0));
   bump("savedBoardFilterRun", await prisma.savedBoardFilterRun.updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as any).then(r => r.count).catch(() => 0));
-  bump("savedBoardFilterAlertLog", await prisma.savedBoardFilterAlertLog.updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as any).then(r => r.count).catch(() => 0));
+  bump(
+    SAVED_BOARD_FILTER_ALERT_LOG_DELEGATE_KEY,
+    await prisma.savedBoardFilterAlertLog
+      .updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as any)
+      .then((r) => r.count)
+      .catch(() => 0)
+  );
   bump("report", await prisma.report.updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as any).then(r => r.count).catch(() => 0));
   bump("reviewQueueItem", await prisma.reviewQueueItem.updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as any).then(r => r.count).catch(() => 0));
 

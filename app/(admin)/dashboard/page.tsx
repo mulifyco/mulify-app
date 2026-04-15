@@ -29,6 +29,7 @@ import { getGtmDashboardStatsForWorkspace } from "@/server/services/gtm.service"
 import RetentionPanel from "@/components/customer-success/RetentionPanel";
 import { getRequiredWorkspace } from "@/server/authz/workspace-scope";
 import AdminPageShell from "@/components/admin/AdminPageShell";
+import { SAVED_BOARD_FILTER_ALERT_LOG_DELEGATE_KEY } from "@/lib/saved-board-filter-alert-log";
 
 export const dynamic = "force-dynamic";
 
@@ -153,7 +154,7 @@ export default async function DashboardPage() {
     getCachedDashboardStats(),
     canAccessFeature(plan, "OPS") ? getCachedOpsSourceHealth().catch(() => null) : Promise.resolve(null),
     canAccessFeature(plan, "ALERTS")
-      ? safeFindMany<BoardAlertRow>("savedBoardFilterAlertLog", {
+      ? safeFindMany<BoardAlertRow>(SAVED_BOARD_FILTER_ALERT_LOG_DELEGATE_KEY, {
           where: { createdAt: { gte: dayAgo } },
           orderBy: { createdAt: "desc" },
           take: 8,
