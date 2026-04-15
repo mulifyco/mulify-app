@@ -10,17 +10,23 @@ import PaywallPanel from "@/components/internal/PaywallPanel";
 import { auth } from "@/lib/auth";
 import { canAccessFeature, getUserPlan } from "@/lib/billing/access";
 import { trackBoardViewServer } from "@/lib/analytics/track-board-server";
-import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
 const boardAlertFindManyArgs = {
   include: {
-    savedFilter: { select: { id: true, name: true } },
+    savedFilter: {
+      select: {
+        id: true,
+        name: true,
+      },
+    },
   },
-} as const satisfies Prisma.BoardAlertLogFindManyArgs;
+} as const;
 
-type BoardAlertRow = Prisma.BoardAlertLogGetPayload<typeof boardAlertFindManyArgs>;
+const getBoardAlerts = () => prisma.boardAlertLog.findMany(boardAlertFindManyArgs);
+
+type BoardAlertRow = Awaited<ReturnType<typeof getBoardAlerts>>[number];
 
 function severityVariant(s: string): "green" | "yellow" | "red" | "default" {
   if (s === "HIGH") return "red";
