@@ -91,7 +91,7 @@ export async function computeCustomerHealth(params: {
       prisma.savedBoardFilter.count({ where: { workspaceId } }),
       Promise.all([
         prisma.watchlistAlertLog.count({ where: { workspaceId, createdAt: { gte: d7 } } }),
-        prisma.boardAlertLog.count({ where: { workspaceId, createdAt: { gte: d7 } } }),
+        prisma.savedBoardFilterAlertLog.count({ where: { workspaceId, createdAt: { gte: d7 } } }),
       ]).then(([a, b]) => a + b),
     ]);
 
@@ -188,7 +188,7 @@ export async function ensureWeeklyDigest(params: {
       prisma.watchlistRun.count({ where: { workspaceId, createdAt: { gte: d7 } } }),
       Promise.all([
         prisma.watchlistAlertLog.count({ where: { workspaceId, createdAt: { gte: d7 } } }),
-        prisma.boardAlertLog.count({ where: { workspaceId, createdAt: { gte: d7 } } }),
+        prisma.savedBoardFilterAlertLog.count({ where: { workspaceId, createdAt: { gte: d7 } } }),
       ]).then(([a, b]) => a + b),
       prisma.productEvent.count({ where: { userId, workspaceId, eventType: ProductEventType.REPORT_CREATE, createdAt: { gte: d7 } } }),
       prisma.productEvent.count({ where: { userId, workspaceId, eventType: ProductEventType.LEAD_CREATE, createdAt: { gte: d7 } } }),
@@ -270,7 +270,7 @@ export async function generateCustomerNudges(params: {
     prisma.productEvent.count({ where: { userId, workspaceId, eventType: ProductEventType.COMPARE_RUN, createdAt: { gte: d7 } } }),
     Promise.all([
       prisma.watchlistAlertLog.count({ where: { workspaceId, createdAt: { gte: d7 } } }),
-      prisma.boardAlertLog.count({ where: { workspaceId, createdAt: { gte: d7 } } }),
+      prisma.savedBoardFilterAlertLog.count({ where: { workspaceId, createdAt: { gte: d7 } } }),
     ]).then(([a, b]) => a + b),
     prisma.user.findUnique({ where: { id: userId }, select: { billingPlan: true } }),
   ]);

@@ -776,7 +776,7 @@ model Workspace {
   watchlistAlerts WatchlistAlertLog[]
   savedBoardFilters SavedBoardFilter[]
   savedBoardFilterRuns SavedBoardFilterRun[]
-  boardAlerts BoardAlertLog[]
+  boardAlerts SavedBoardFilterAlertLog[]
   leads Lead[]
   gtmLeads GtmLead[]
   gtmActivities GtmActivity[]
@@ -1593,7 +1593,7 @@ model SavedBoardFilter {
   updatedAt        DateTime  @updatedAt
 
   runs   SavedBoardFilterRun[]
-  alerts BoardAlertLog[]
+  alerts SavedBoardFilterAlertLog[]
 
   @@index([boardType])
   @@index([isEnabled])
@@ -1619,7 +1619,8 @@ model SavedBoardFilterRun {
   @@index([workspaceId, createdAt])
 }
 
-model BoardAlertLog {
+/// Persisted spikes / deltas from saved board filter evaluations (table @@map keeps legacy DB name).
+model SavedBoardFilterAlertLog {
   id            String   @id @default(cuid())
   workspaceId   String?
   workspace     Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
@@ -1634,6 +1635,7 @@ model BoardAlertLog {
   metadata      Json?
   createdAt     DateTime @default(now())
 
+  @@map("BoardAlertLog")
   @@index([savedFilterId])
   @@index([boardType])
   @@index([severity])

@@ -61,8 +61,8 @@ export default async function BoardsDashboardPage() {
   weekAgo.setDate(weekAgo.getDate() - 7);
   const [activeAlertsCount, highAlertsCount] = await prisma
     .$transaction([
-      prisma.boardAlertLog.count({ where: { createdAt: { gte: weekAgo }, ...(workspaceId ? { workspaceId } : {}) } }),
-      prisma.boardAlertLog.count({
+      prisma.savedBoardFilterAlertLog.count({ where: { createdAt: { gte: weekAgo }, ...(workspaceId ? { workspaceId } : {}) } }),
+      prisma.savedBoardFilterAlertLog.count({
         where: { createdAt: { gte: weekAgo }, severity: "HIGH", ...(workspaceId ? { workspaceId } : {}) },
       }),
     ])

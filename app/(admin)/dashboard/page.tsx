@@ -153,7 +153,7 @@ export default async function DashboardPage() {
     getCachedDashboardStats(),
     canAccessFeature(plan, "OPS") ? getCachedOpsSourceHealth().catch(() => null) : Promise.resolve(null),
     canAccessFeature(plan, "ALERTS")
-      ? safeFindMany<BoardAlertRow>("boardAlertLog", {
+      ? safeFindMany<BoardAlertRow>("savedBoardFilterAlertLog", {
           where: { createdAt: { gte: dayAgo } },
           orderBy: { createdAt: "desc" },
           take: 8,

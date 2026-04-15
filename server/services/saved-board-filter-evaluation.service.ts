@@ -149,7 +149,7 @@ export async function evaluateAndPersistSavedBoardFilter(params: {
     }
 
     for (const r of rules) {
-      const existing = await tx.boardAlertLog.findFirst({
+      const existing = await tx.savedBoardFilterAlertLog.findFirst({
         where: {
           workspaceId,
           savedFilterId: filter.id,
@@ -160,7 +160,7 @@ export async function evaluateAndPersistSavedBoardFilter(params: {
       });
       if (existing) continue;
 
-      await tx.boardAlertLog.create({
+      await tx.savedBoardFilterAlertLog.create({
         data: {
           workspaceId,
           savedFilterId: filter.id,

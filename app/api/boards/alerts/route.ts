@@ -24,14 +24,14 @@ export async function GET(req: NextRequest) {
 
   const [items, total] = await withRouteTiming("/api/boards/alerts", () =>
     Promise.all([
-      prisma.boardAlertLog.findMany({
+      prisma.savedBoardFilterAlertLog.findMany({
         where: where as never,
         orderBy: { createdAt: "desc" },
         skip,
         take: pageSize,
         include: { savedFilter: { select: { id: true, name: true } } },
       }),
-      prisma.boardAlertLog.count({ where: where as never }),
+      prisma.savedBoardFilterAlertLog.count({ where: where as never }),
     ])
   );
 

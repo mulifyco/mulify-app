@@ -56,7 +56,7 @@ export async function tenantBackfillJob(): Promise<{
   bump("watchlistAlertLog", await prisma.watchlistAlertLog.updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as any).then(r => r.count).catch(() => 0));
   bump("savedBoardFilter", await prisma.savedBoardFilter.updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as any).then(r => r.count).catch(() => 0));
   bump("savedBoardFilterRun", await prisma.savedBoardFilterRun.updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as any).then(r => r.count).catch(() => 0));
-  bump("boardAlertLog", await prisma.boardAlertLog.updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as any).then(r => r.count).catch(() => 0));
+  bump("savedBoardFilterAlertLog", await prisma.savedBoardFilterAlertLog.updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as any).then(r => r.count).catch(() => 0));
   bump("report", await prisma.report.updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as any).then(r => r.count).catch(() => 0));
   bump("reviewQueueItem", await prisma.reviewQueueItem.updateMany({ where: { workspaceId: null }, data: { workspaceId: fallbackWorkspaceId }, take: batch } as any).then(r => r.count).catch(() => 0));
 
