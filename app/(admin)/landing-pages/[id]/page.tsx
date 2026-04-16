@@ -45,9 +45,11 @@ export default async function LandingPageDetailPage({ params }: Props) {
   const graphCounts = countByEntityType(links);
   const orphanHints: string[] = [];
   if (ads.length === 0) orphanHints.push("No linked ads");
+  type LinkItem = (typeof links)[number];
+  type OutgoingItem = NonNullable<typeof intel.inferredOutgoing>[number];
   const hasStoreLineage =
-    links.some((l) => l.entityType === "STORE") ||
-    (intel.inferredOutgoing ?? []).some((x) => x.toEntityType === "STORE");
+    links.some((l: LinkItem) => l.entityType === "STORE") ||
+    (intel.inferredOutgoing ?? []).some((x: OutgoingItem) => x.toEntityType === "STORE");
   if (!hasStoreLineage) orphanHints.push("No store lineage");
 
   return (
