@@ -536,7 +536,7 @@ export default async function DashboardPage() {
             <div className="text-sm text-muted">—</div>
           ) : (
             <div className="space-y-2">
-              {recentWatchlistAlerts.map((a) => (
+              {recentWatchlistAlerts.map((a: WatchlistAlertRow) => (
                 <div key={a.id} className="rounded border border-border px-3 py-2">
                   <div className="flex items-center justify-between gap-3">
                     <Link href={`/watchlists/${a.watchlistId}`} className="text-sm font-medium text-foreground hover:opacity-80">
