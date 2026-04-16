@@ -433,7 +433,7 @@ export default async function DashboardPage() {
                   <div className="text-xs text-muted-2">—</div>
                 ) : (
                   <ul className="space-y-1">
-                    {b.rows.map((r) => (
+                    {b.rows.map((r: unknown) => (
                       <li key={rowKey(r)} className="flex items-center justify-between gap-2">
                         <span className="text-xs text-foreground truncate">
                           {rowLabel(r)}
@@ -445,25 +445,29 @@ export default async function DashboardPage() {
                     ))}
                   </ul>
                 )}
-                {b.rows[0]?.clusterId ? (
+                {(() => {
+                  const top = asObj(b.rows[0]);
+                  const clusterId = top?.clusterId;
+                  return typeof clusterId === "string" && clusterId ? (
                   <div className="mt-2">
                     <div className="flex items-center gap-3">
                       <ExplainDrawer
                         entityType={b.label === "Creative Winners" ? "CREATIVE_CLUSTER" : "PRODUCT_CLUSTER"}
-                        entityId={b.rows[0].clusterId}
+                        entityId={clusterId}
                         triggerLabel="Why this top item?"
                         title={`Top item · ${b.label}`}
                       />
                       <ActionMenu
                         ctx={{
                           entityType: b.label === "Creative Winners" ? "CREATIVE_CLUSTER" : "PRODUCT_CLUSTER",
-                          entityId: b.rows[0].clusterId,
+                          entityId: clusterId,
                           label: `Top item · ${b.label}`,
                         }}
                       />
                     </div>
                   </div>
-                ) : null}
+                  ) : null;
+                })()}
               </div>
             ))}
           </div>
