@@ -218,6 +218,16 @@ export default async function DashboardPage() {
     gtmSnapshotPromise,
   ]);
 
+  const recentBoardAlertsRows = recentBoardAlerts as BoardAlertRow[];
+  const recentWatchlistAlertsRows = recentWatchlistAlerts as WatchlistAlertRow[];
+  const topCandidatesRows = topCandidates as DiscoveryCandidateRow[];
+
+  type RecentJobRow = (typeof s.recentJobs)[number];
+  type TopWinningHookRow = NonNullable<(typeof s)["topWinningHooks24h"]>[number];
+  type CrossoverWinnerHookRow = NonNullable<(typeof s)["crossoverWinnerHooks24h"]>[number];
+  type BoardPreview = { label: string; href: string; rows: unknown[] };
+  type OpsWorstSourceRow = { id: string; name: string; type: string; healthScore: number; band: string };
+
   const bareLibrary =
     s.totalSources === 0 && s.totalStores === 0 && s.totalShops === 0 && s.totalAds === 0;
   const demoReportHref = userId ? `/reports/launch_demo_exec_${userId}` : "/reports";
@@ -231,12 +241,18 @@ export default async function DashboardPage() {
     if (em[0]) spots.push({ key: "em", label: "Early Movers", score: Number(em[0].earlyMoverScore ?? 0) });
     if (sat[0]) spots.push({ key: "sat", label: "Saturated Products", score: Number(sat[0].saturatedScore ?? 0) });
     if (cw[0]) spots.push({ key: "cw", label: "Creative Winners", score: Number(cw[0].creativeWinnerScore ?? 0) });
-    return spots.length ? spots.reduce((a, b) => (b.score > a.score ? b : a), spots[0]!).label : "—";
+    return spots.length
+      ? spots.reduce(
+          (a: { key: string; label: string; score: number }, b: { key: string; label: string; score: number }) =>
+            b.score > a.score ? b : a,
+          spots[0]!,
+        ).label
+      : "—";
   })();
 
-  const alerts24h = recentBoardAlerts.length;
-  const watchlistSpikes24h = recentWatchlistAlerts.length;
-  const activeBoardsWithTopItems = [rts, ml, em, sat, cw].filter((x) => x.length > 0).length;
+  const alerts24h = recentBoardAlertsRows.length;
+  const watchlistSpikes24h = recentWatchlistAlertsRows.length;
+  const activeBoardsWithTopItems = [rts, ml, em, sat, cw].filter((x: unknown[]) => x.length > 0).length;
   const avgHealth: number | string = ops?.summary.avgSourceHealthScore ?? "—";
   const stalled = ops?.summary.stalledSourcesCount ?? 0;
   const failedJobs24h = ops?.summary.failedJobs24h ?? s.failedJobs24h;
@@ -386,7 +402,7 @@ export default async function DashboardPage() {
           </div>
           {highPriorityReviewItems.length ? (
             <div className="space-y-2">
-              {highPriorityReviewItems.map((it) => (
+              {highPriorityReviewItems.map((it: ReviewQueueSummaryRow) => (
                 <div key={it.id} className="rounded border border-border px-3 py-2">
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm font-medium text-foreground truncate">{it.title}</div>
@@ -413,13 +429,13 @@ export default async function DashboardPage() {
         <div className="lg:col-span-2 rounded-lg border border-border bg-card p-4 shadow-sm">
           <SectionHeader title="Hottest boards" description="Top 1–3 items per board (fast preview)" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
+            {([
               { label: "Ready to Scale", href: "/boards/ready-to-scale", rows: rts },
               { label: "Market Leaders", href: "/boards/market-leaders", rows: ml },
               { label: "Early Movers", href: "/boards/early-movers", rows: em },
               { label: "Saturated Products", href: "/boards/saturated-products", rows: sat },
               { label: "Creative Winners", href: "/boards/creative-winners", rows: cw },
-            ].map((b) => (
+            ] as BoardPreview[]).map((b: BoardPreview) => (
               <div key={b.href} className="rounded border border-border bg-card px-3 py-3">
                 <div className="flex items-center justify-between gap-3 mb-2">
                   <Link href={b.href} className="text-sm font-semibold text-foreground hover:opacity-80">
@@ -504,11 +520,11 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <SectionHeader title="Active alerts" description="Saved filter alerts (last 24h)" />
-          {recentBoardAlerts.length === 0 ? (
+          {recentBoardAlertsRows.length === 0 ? (
             <div className="text-sm text-muted">—</div>
           ) : (
             <div className="space-y-2">
-              {recentBoardAlerts.map((a: BoardAlertRow) => (
+              {recentBoardAlertsRows.map((a: BoardAlertRow) => (
                 <div key={a.id} className="rounded border border-border px-3 py-2">
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm font-medium text-foreground">{a.title}</div>
@@ -532,11 +548,11 @@ export default async function DashboardPage() {
 
         <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <SectionHeader title="Watchlist spikes" description="Competitor alerts (last 24h)" />
-          {recentWatchlistAlerts.length === 0 ? (
+          {recentWatchlistAlertsRows.length === 0 ? (
             <div className="text-sm text-muted">—</div>
           ) : (
             <div className="space-y-2">
-              {recentWatchlistAlerts.map((a: WatchlistAlertRow) => (
+              {recentWatchlistAlertsRows.map((a: WatchlistAlertRow) => (
                 <div key={a.id} className="rounded border border-border px-3 py-2">
                   <div className="flex items-center justify-between gap-3">
                     <Link href={`/watchlists/${a.watchlistId}`} className="text-sm font-medium text-foreground hover:opacity-80">
@@ -562,11 +578,11 @@ export default async function DashboardPage() {
 
         <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <SectionHeader title="Discovery candidates" description="High-confidence (not promoted)" />
-          {topCandidates.length === 0 ? (
+          {topCandidatesRows.length === 0 ? (
             <div className="text-sm text-muted">—</div>
           ) : (
             <div className="space-y-2">
-              {topCandidates.map((c) => (
+              {topCandidatesRows.map((c: DiscoveryCandidateRow) => (
                 <div key={c.id} className="rounded border border-border px-3 py-2">
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm font-semibold text-foreground">{c.domain}</div>
@@ -598,7 +614,7 @@ export default async function DashboardPage() {
           </div>
           {ops?.worstSources?.length ? (
             <div className="space-y-2">
-              {ops.worstSources.slice(0, 3).map((src) => (
+              {ops.worstSources.slice(0, 3).map((src: OpsWorstSourceRow) => (
                 <div key={src.id} className="rounded border border-border px-3 py-2">
                   <div className="flex items-center justify-between gap-3">
                     <Link href={`/sources/${src.id}`} className="text-sm font-medium text-foreground hover:opacity-80">
@@ -624,7 +640,7 @@ export default async function DashboardPage() {
             {s.recentJobs.length === 0 ? (
               <div className="text-sm text-muted-2 text-center py-8">No jobs yet.</div>
             ) : (
-              s.recentJobs.map((job) => (
+              s.recentJobs.map((job: RecentJobRow) => (
                 <div key={job.id} className="rounded-lg border border-border bg-card p-3 shadow-sm text-sm">
                   <div className="font-medium text-foreground">{job.sourceName}</div>
                   <div className="text-[11px] text-muted-2">{job.sourceType}</div>
@@ -677,7 +693,7 @@ export default async function DashboardPage() {
                     </td>
                   </tr>
                 ) : (
-                  s.recentJobs.map((job) => (
+                  s.recentJobs.map((job: RecentJobRow) => (
                     <tr key={job.id} className="hover:bg-surface-2/70">
                       <td className="px-3 py-2.5">
                         <div className="text-foreground">{job.sourceName}</div>
@@ -748,7 +764,7 @@ export default async function DashboardPage() {
             </div>
             <div className="mt-3 space-y-2">
               {(s.topWinningHooks24h ?? []).length ? (
-                (s.topWinningHooks24h ?? []).slice(0, 5).map((h) => (
+                (s.topWinningHooks24h ?? []).slice(0, 5).map((h: TopWinningHookRow) => (
                   <div key={h.canonicalHook} className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-sm text-foreground truncate">{h.canonicalHook}</div>
@@ -770,7 +786,7 @@ export default async function DashboardPage() {
             <div className="text-sm text-foreground font-semibold mt-1">Hooks winning on multiple platforms</div>
             <div className="mt-3 space-y-2">
               {(s.crossoverWinnerHooks24h ?? []).length ? (
-                (s.crossoverWinnerHooks24h ?? []).slice(0, 6).map((h) => (
+                (s.crossoverWinnerHooks24h ?? []).slice(0, 6).map((h: CrossoverWinnerHookRow) => (
                   <div key={h.canonicalHook} className="flex items-center justify-between gap-3">
                     <div className="text-sm text-foreground truncate">{h.canonicalHook}</div>
                     <div className="text-xs tabular-nums text-muted shrink-0">{h.mentions}</div>
