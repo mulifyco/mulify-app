@@ -110,15 +110,30 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
             <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">Activities</div>
             {lead.activities?.length ? (
               <ul className="space-y-2">
-                {(lead.activities as any[]).map((a) => (
+                {(() => {
+                  type LeadActivity = {
+                    id: string;
+                    type?: string | null;
+                    note?: string | null;
+                    createdAt?: Date | string | null;
+                  };
+                  const rows = lead.activities as LeadActivity[];
+                  return rows.map((a: LeadActivity) => (
                   <li key={a.id} className="rounded border border-border px-3 py-2">
                     <div className="flex items-center justify-between gap-3">
                       <div className="text-xs text-muted">{a.type ?? "NOTE"}</div>
-                      <div className="text-[11px] text-muted">{String(a.createdAt?.toISOString?.() ?? a.createdAt ?? "—")}</div>
+                      <div className="text-[11px] text-muted">
+                        {(() => {
+                          const v = a.createdAt ?? null;
+                          const d = v instanceof Date ? v : typeof v === "string" ? new Date(v) : null;
+                          return d && Number.isFinite(d.getTime()) ? d.toISOString() : "—";
+                        })()}
+                      </div>
                     </div>
                     <div className="text-sm text-foreground mt-1 whitespace-pre-wrap">{a.note}</div>
                   </li>
-                ))}
+                  ));
+                })()}
               </ul>
             ) : (
               <div className="text-sm text-muted">—</div>

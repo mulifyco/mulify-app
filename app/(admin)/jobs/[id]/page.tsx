@@ -40,6 +40,7 @@ export default async function JobDetailPage({ params }: Props) {
   }
 
   type JobDetail = typeof job;
+  type SyncLogRow = NonNullable<JobDetail["syncLogs"]>[number];
   const warnings = jobWarningsList(job.metadata);
   const batches = jobBatchCount(job.metadata);
 
@@ -198,7 +199,7 @@ export default async function JobDetailPage({ params }: Props) {
             {(job.syncLogs ?? []).length === 0 ? (
               <div className="px-4 py-6 text-center text-muted-2 text-sm">No logs</div>
             ) : (
-              (job.syncLogs ?? []).map((log) => (
+              (job.syncLogs ?? []).map((log: SyncLogRow) => (
                 <div
                   key={log.id}
                   className={`px-4 py-2 border-b border-border text-xs font-mono flex gap-3 ${
