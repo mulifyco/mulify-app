@@ -1,6 +1,5 @@
 "use client";
 
-import type { GtmLead, GtmStage } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { getOutreachTemplate, OUTREACH_TEMPLATE_OPTIONS, type OutreachTemplateId } from "@/lib/gtm/outreach-templates";
@@ -17,7 +16,7 @@ export type GtmDashboardStatsProps = {
   trialWatch: GtmLead[];
 };
 
-const STAGES: GtmStage[] = [
+const STAGES = [
   "PROSPECT",
   "CONTACTED",
   "DEMO_BOOKED",
@@ -26,7 +25,22 @@ const STAGES: GtmStage[] = [
   "WON",
   "LOST",
   "FOLLOW_UP_LATER",
-];
+] as const;
+
+export type GtmStage = (typeof STAGES)[number];
+
+export type GtmLead = {
+  id: string;
+  company: string;
+  name: string | null;
+  email: string | null;
+  website: string | null;
+  source: string;
+  estimatedMRR: number;
+  priorityScore: number;
+  nextFollowUpAt: Date | string | null;
+  stage: GtmStage;
+};
 
 function startOfToday(): Date {
   const d = new Date();
@@ -34,17 +48,26 @@ function startOfToday(): Date {
   return d;
 }
 
-function isOverdue(next: Date | null, stage: GtmStage): boolean {
-  if (!next || stage === "WON" || stage === "LOST") return false;
-  return next.getTime() < startOfToday().getTime();
+function asDate(v: Date | string | null): Date | null {
+  if (!v) return null;
+  const d = v instanceof Date ? v : new Date(v);
+  return Number.isFinite(d.getTime()) ? d : null;
 }
 
-function isDueToday(next: Date | null, stage: GtmStage): boolean {
+function isOverdue(next: Date | string | null, stage: GtmStage): boolean {
   if (!next || stage === "WON" || stage === "LOST") return false;
+  const d = asDate(next);
+  return d ? d.getTime() < startOfToday().getTime() : false;
+}
+
+function isDueToday(next: Date | string | null, stage: GtmStage): boolean {
+  if (!next || stage === "WON" || stage === "LOST") return false;
+  const d = asDate(next);
+  if (!d) return false;
   const s = startOfToday();
   const e = new Date(s);
   e.setDate(e.getDate() + 1);
-  return next >= s && next < e;
+  return d >= s && d < e;
 }
 
 export default function GtmBoardClient({
