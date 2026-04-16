@@ -508,7 +508,7 @@ export default async function DashboardPage() {
             <div className="text-sm text-muted">—</div>
           ) : (
             <div className="space-y-2">
-              {recentBoardAlerts.map((a) => (
+              {recentBoardAlerts.map((a: BoardAlertRow) => (
                 <div key={a.id} className="rounded border border-border px-3 py-2">
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm font-medium text-foreground">{a.title}</div>
